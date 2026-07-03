@@ -1,0 +1,27 @@
+{
+  "name": "rucksack",
+  "version": "0.1.0",
+  "description": "A macOS CLI that prepares local coding agents to keep running while your MacBook travels with you.",
+  "type": "module",
+  "bin": {
+    "rucksack": "./bin/rucksack.mjs"
+  },
+  "scripts": {
+    "dev": "node scripts/serve-site.mjs",
+    "doctor": "node bin/rucksack.mjs doctor",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "macos",
+    "caffeinate",
+    "pmset",
+    "codex",
+    "claude",
+    "grok",
+    "remote-control"
+  ],
+  "license": "MIT"
+}

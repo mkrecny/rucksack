@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "hotspot": {
+    "ssid": "My iPhone",
+    "strict": true,
+    "allowRedactedSsid": false
+  },
+  "power": {
+    "minimumBatteryPercent": 35,
+    "lidClosed": false
+  },
+  "watch": {
+    "enabled": false,
+    "intervalSeconds": 20
+  },
+  "notify": {
+    "url": ""
+  },
+  "tailnet": {
+    "required": false
+  },
+  "remotes": [
+    {
+      "name": "codex",
+      "command": "codex",
+      "required": false,
+      "statusCommand": "pgrep -f 'codex remote-control'",
+      "startCommand": "codex remote-control"
+    },
+    {
+      "name": "claude",
+      "command": "claude",
+      "required": false,
+      "statusCommand": "",
+      "startCommand": ""
+    },
+    {
+      "name": "agy",
+      "command": "agy",
+      "required": false,
+      "statusCommand": "",
+      "startCommand": ""
+    },
+    {
+      "name": "grok",
+      "command": "grok",
+      "required": false,
+      "statusCommand": "",
+      "startCommand": ""
+    }
+  ]
+}

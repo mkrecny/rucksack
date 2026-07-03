@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Rucksack keeps your local coding agents running — lid closed, in the bag, on your phone's hotspot. Open-source macOS CLI.">
+    <meta name="theme-color" content="#070a10">
+    <title>Rucksack — pack your agents</title>
+    <link rel="icon" type="image/png" href="./assets/favicon.png">
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="scanlines" aria-hidden="true"></div>
+
+    <header class="site-header" aria-label="Primary">
+      <a class="brand" href="#top">
+        <img class="brand__mark" src="./assets/logo.png" alt="" width="34" height="34">
+        <span class="brand__word">RUCKSACK</span>
+      </a>
+      <nav>
+        <a href="#run">The Run</a>
+        <a href="#loadout">Loadout</a>
+        <a href="#install">Install</a>
+        <a href="#safety">Safety</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <!-- ============ HERO ============ -->
+      <section class="hero">
+        <div class="hero__art" role="img" aria-label="Anime hacker crossing a neon city street at night with a glowing rucksack"></div>
+        <div class="hero__shade" aria-hidden="true"></div>
+        <div class="hero__content">
+          <p class="eyebrow">// open source · macOS · for agent runners</p>
+          <h1 class="glitch" data-text="PACK YOUR AGENTS.">PACK YOUR AGENTS.</h1>
+          <p class="lede">
+            Your coding agents keep working — <strong>lid closed, in the bag,</strong> on your phone's hotspot.
+            Rucksack runs every check before you walk out the door, then watches the link while you move
+            and pings your phone if anything breaks.
+          </p>
+
+          <div class="install-line" id="hero-install">
+            <span class="install-line__prompt" aria-hidden="true">$</span>
+            <code class="install-line__cmd">curl -fsSL https://rucksack.sh/install | bash</code>
+            <button class="copy" type="button" data-copy="curl -fsSL https://rucksack.sh/install | bash" aria-label="Copy install command">COPY</button>
+          </div>
+
+          <div class="hero__actions">
+            <a class="button button--primary" href="#install">Install</a>
+            <a class="button button--secondary" href="#run">Read the run ↓</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ TICKER ============ -->
+      <div class="ticker" aria-hidden="true">
+        <div class="ticker__track">
+          <span>MACOS ✓&nbsp;&nbsp;POWER TOOLS ✓&nbsp;&nbsp;BATTERY ✓&nbsp;&nbsp;HOTSPOT ✓&nbsp;&nbsp;INTERNET ✓&nbsp;&nbsp;TAILNET ✓&nbsp;&nbsp;REMOTES ✓&nbsp;&nbsp;— PACK · LID CLOSED · WATCHDOG LIVE · PHONE ALERTS ARMED —&nbsp;&nbsp;</span>
+          <span>MACOS ✓&nbsp;&nbsp;POWER TOOLS ✓&nbsp;&nbsp;BATTERY ✓&nbsp;&nbsp;HOTSPOT ✓&nbsp;&nbsp;INTERNET ✓&nbsp;&nbsp;TAILNET ✓&nbsp;&nbsp;REMOTES ✓&nbsp;&nbsp;— PACK · LID CLOSED · WATCHDOG LIVE · PHONE ALERTS ARMED —&nbsp;&nbsp;</span>
+        </div>
+      </div>
+
+      <!-- ============ THE RUN (comic) ============ -->
+      <section id="run" class="section">
+        <div class="section__header">
+          <p class="eyebrow">// mission log</p>
+          <h2>THE RUN</h2>
+          <p class="section__sub">Every trip is the same four panels. Rucksack makes sure they end well.</p>
+        </div>
+
+        <div class="comic" aria-label="Four-panel comic: deadline, pack, transit, arrival">
+          <figure class="panel" style="--tilt:-1deg">
+            <img src="./assets/panel1.jpg" alt="Comic panel: a hacker at a desk of glowing terminals glances at the clock, rucksack hanging empty on the chair" loading="lazy">
+            <figcaption>
+              <span class="panel__num">01 · DEADLINE</span>
+              19:42. The agents are mid-refactor. You have to leave.
+            </figcaption>
+          </figure>
+          <figure class="panel" style="--tilt:1deg">
+            <img src="./assets/panel2.jpg" alt="Comic panel: hands slide a glowing laptop into a canvas rucksack while a phone shows five green checks" loading="lazy">
+            <figcaption>
+              <span class="panel__num">02 · PACK</span>
+              <code>rucksack pack --lid-closed --yes --watch</code> — every check green. Zip it.
+            </figcaption>
+          </figure>
+          <figure class="panel" style="--tilt:-0.6deg">
+            <img src="./assets/panel3.jpg" alt="Comic panel: the hacker strides through a neon subway, glowing rucksack on their back, watching logs stream on their phone" loading="lazy">
+            <figcaption>
+              <span class="panel__num">03 · TRANSIT</span>
+              Hotspot drops? The watchdog rejoins and pings your phone.
+            </figcaption>
+          </figure>
+          <figure class="panel" style="--tilt:0.8deg">
+            <img src="./assets/panel4.jpg" alt="Comic panel: at a dawn-lit café counter the laptop reopens to a finished task list, rucksack slumped beside the stool" loading="lazy">
+            <figcaption>
+              <span class="panel__num">04 · ARRIVAL</span>
+              Arrive. Unpack. The work never stopped.
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- ============ LOADOUT ============ -->
+      <section id="loadout" class="section section--alt">
+        <div class="section__header">
+          <p class="eyebrow">// gear check</p>
+          <h2>LOADOUT</h2>
+          <p class="section__sub">A transparent CLI. No daemon squatting on your Mac — everything is a command you can read.</p>
+        </div>
+
+        <div class="loadout">
+          <article class="card">
+            <code class="card__cmd"><span>$</span> rucksack doctor</code>
+            <p>Nine readiness checks: battery, hotspot SSID, <em>real</em> internet (captive-portal probe), Tailscale if you have it, your agent remotes.</p>
+          </article>
+          <article class="card">
+            <code class="card__cmd"><span>$</span> rucksack pack --lid-closed --yes</code>
+            <p>Backpack mode. <code>sudo pmset disablesleep</code> with the previous value saved, verified, and restored on stop. The bag run, done properly.</p>
+          </article>
+          <article class="card">
+            <code class="card__cmd"><span>$</span> rucksack pack --watch</code>
+            <p>A watchdog rides along: rejoins the hotspot when Wi-Fi drops, restarts the keep-awake process if it dies, logs everything.</p>
+          </article>
+          <article class="card">
+            <code class="card__cmd"><span>$</span> rucksack notify test</code>
+            <p>Point <code>--notify-url</code> at an <a href="https://ntfy.sh">ntfy.sh</a> topic. Link lost, link restored, process revived — your phone knows in seconds.</p>
+          </article>
+          <article class="card">
+            <code class="card__cmd"><span>$</span> rucksack hotspot connect "My iPhone"</code>
+            <p>Joins your phone's hotspot from the Keychain-saved password and verifies the association — even when macOS redacts the SSID.</p>
+          </article>
+          <article class="card">
+            <code class="card__cmd"><span>$</span> rucksack unpack</code>
+            <p>Kills the watchdog, stops keep-awake, restores your exact previous sleep settings, cleans up state. No trace left behind.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ INSTALL ============ -->
+      <section id="install" class="section">
+        <div class="section__header">
+          <p class="eyebrow">// one line</p>
+          <h2>INSTALL</h2>
+          <p class="section__sub">macOS · Node 20+ · MIT licensed · no runtime dependencies</p>
+        </div>
+
+        <div class="terminal" aria-label="Install commands">
+          <div class="terminal__bar" aria-hidden="true"><span></span><span></span><span></span><em>rucksack — install</em></div>
+          <div class="terminal__body">
+            <div class="terminal__line">
+              <code><span class="t-prompt">$</span> curl -fsSL https://rucksack.sh/install | bash</code>
+              <button class="copy" type="button" data-copy="curl -fsSL https://rucksack.sh/install | bash" aria-label="Copy install command">COPY</button>
+            </div>
+            <pre class="terminal__out" aria-hidden="true">  ▞▚ rucksack · checking macOS ............ OK
+  ▞▚ rucksack · checking node >= 20 ....... OK
+  ▞▚ rucksack · installing CLI ............ OK
+
+  packed. try:  rucksack init --hotspot "My iPhone"</pre>
+            <div class="terminal__line terminal__line--dim">
+              <code><span class="t-prompt">$</span> <span class="t-comment"># prefer to read it first? same script, no pipe:</span></code>
+            </div>
+            <div class="terminal__line">
+              <code><span class="t-prompt">$</span> curl -fsSL https://rucksack.sh/install -o install.sh &amp;&amp; less install.sh</code>
+              <button class="copy" type="button" data-copy="curl -fsSL https://rucksack.sh/install -o install.sh && less install.sh" aria-label="Copy inspect command">COPY</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SAFETY ============ -->
+      <section id="safety" class="section section--hazard">
+        <div class="hazard-tape" aria-hidden="true"></div>
+        <div class="section__header">
+          <p class="eyebrow">// no lies on this page</p>
+          <h2>STRAIGHT TALK</h2>
+        </div>
+        <ul class="straight">
+          <li><strong>Lid-closed mode is the real backpack mode.</strong> On battery, <code>caffeinate</code> alone can't survive a lid close — that's physics of macOS, not marketing. Rucksack uses <code>sudo pmset</code> and restores your exact previous setting.</li>
+          <li><strong>A laptop in a bag is a laptop in a bag.</strong> Agent work is mostly network-bound, so heat stays modest — but check your ventilation and battery before you zip. Rucksack checks with you; it can't bend thermodynamics.</li>
+          <li><strong>Alerts ride the same link.</strong> If the hotspot is fully dead, the "it's dead" ping queues until something routes. A heartbeat dead-man's switch is on the roadmap.</li>
+          <li><strong>Tailscale is optional.</strong> Agent remote surfaces are outbound-only — your phone never needs to reach the Mac. A tailnet only matters if you want direct ssh.</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer>
+      <div class="footer__inner">
+        <span class="footer__brand"><img src="./assets/logo.png" alt="" width="22" height="22"> rucksack.sh</span>
+        <span>MIT · macOS · <a href="https://github.com/mkrecny/rucksack">source</a></span>
+        <span class="footer__credit">art generated with Gemini</span>
+      </div>
+    </footer>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>

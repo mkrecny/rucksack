@@ -1,0 +1,6 @@
+- enable devs running codex, claude, agy, grok CLIs locally to keep their computer running (maybe using a pmset command) with the lid closed - the idea is that you're coding and then have to leave the house - but you're bringing your laptop with you - it's in your backpack (rucksack)  - so put mac in their backpack - connected to mobile hotspot - remote control enabled on phone for codex, claude, agy, grok
+- UX is up for debate but the user should initiate backback somehow - or maybe it's just on and kicks in on lidclose - and then the tool auto connects to hotspot - or makes sure user is connected to mobile hotspot (idk how you verify that) - makes sure or connects remote sessions eg (codex remote-control - claude, agy, and grok equivalents) - once that is confirmed and user is ready - pmset (or whatever) ensures computer keeps running with lid closed
+- this will be fully free / open source - but will also have its own website
+- may be an npm command - may be a hotkey - may be a menubar app
+- rucksack.sh is purchased in vercel
+- ideally this works across macbooks - not just the dev macbook we're working on
