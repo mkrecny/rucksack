@@ -6,7 +6,9 @@
     <meta name="description" content="Rucksack keeps your local coding agents running — lid closed, in the bag, on your phone's hotspot. Open-source macOS CLI.">
     <meta name="theme-color" content="#070a10">
     <title>Rucksack — pack your agents</title>
-    <link rel="icon" type="image/png" href="./assets/favicon.png">
+    <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
+    <link rel="alternate icon" type="image/png" href="./assets/favicon.png">
+    <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
@@ -14,7 +16,7 @@
 
     <header class="site-header" aria-label="Primary">
       <a class="brand" href="#top">
-        <img class="brand__mark" src="./assets/logo.png" alt="" width="34" height="34">
+        <span class="brand__mark" aria-hidden="true">🎒</span>
         <span class="brand__word">RUCKSACK</span>
       </a>
       <nav>
@@ -34,7 +36,8 @@
           <p class="eyebrow">// open source · macOS · for agent runners</p>
           <h1 class="glitch" data-text="PACK YOUR AGENTS.">PACK YOUR AGENTS.</h1>
           <p class="lede">
-            Your coding agents keep working — <strong>lid closed, in the bag,</strong> on your phone's hotspot.
+            Your coding agents keep working — <strong>lid closed, in the bag,</strong> on your phone's hotspot —
+            while <strong>you keep steering from the Codex or Claude app</strong> in your hand.
             Rucksack runs every check before you walk out the door, then watches the link while you move
             and pings your phone if anything breaks.
           </p>
@@ -97,6 +100,38 @@
               Arrive. Unpack. The work never stopped.
             </figcaption>
           </figure>
+        </div>
+      </section>
+
+      <!-- ============ COCKPIT ============ -->
+      <section id="cockpit" class="section">
+        <div class="section__header">
+          <p class="eyebrow">// the phone is the cockpit</p>
+          <h2>KEEP WORKING FROM YOUR POCKET</h2>
+          <p class="section__sub">The Mac in the bag is the compute node. The phone in your hand runs the show.</p>
+        </div>
+        <div class="cockpit">
+          <figure class="panel panel--cockpit" style="--tilt:-0.8deg">
+            <img src="./assets/cockpit.jpg" alt="Comic panel: on a night bus, the hacker reviews an agent's diff on their phone and taps a glowing APPROVE button, rucksack on their lap" loading="lazy">
+            <figcaption>
+              <span class="panel__num">05 · COCKPIT</span>
+              Diff reviewed. APPROVE tapped. Next task queued — from seat 23A.
+            </figcaption>
+          </figure>
+          <div class="cockpit__cards">
+            <article class="card">
+              <code class="card__cmd"><span>▸</span> STEER</code>
+              <p>Keep driving the run from the <strong>Codex app</strong> or <strong>claude.ai</strong> on your phone — review diffs, approve tools, redirect the agent mid-transit. Outbound-only: the Mac never needs inbound access.</p>
+            </article>
+            <article class="card">
+              <code class="card__cmd"><span>▸</span> WATCH</code>
+              <p>The watchdog posts to your private <a href="https://ntfy.sh">ntfy.sh</a> topic — link lost, link restored, process revived. Subscribe on your phone and know within seconds.</p>
+            </article>
+            <article class="card">
+              <code class="card__cmd"><span>▸</span> REACH</code>
+              <p>Want a real terminal into the bag? Optional <strong>Tailscale</strong> plus any ssh client gives you a shell from anywhere. Strictly optional — steering and alerts work without it.</p>
+            </article>
+          </div>
         </div>
       </section>
 
@@ -185,7 +220,7 @@
 
     <footer>
       <div class="footer__inner">
-        <span class="footer__brand"><img src="./assets/logo.png" alt="" width="22" height="22"> rucksack.sh</span>
+        <span class="footer__brand"><span class="footer__mark" aria-hidden="true">🎒</span> rucksack.sh</span>
         <span>MIT · macOS · <a href="https://github.com/mkrecny/rucksack">source</a></span>
         <span class="footer__credit">art generated with Gemini</span>
       </div>

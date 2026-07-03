@@ -84,7 +84,7 @@ code { font-family: var(--mono); }
   letter-spacing: 0.14em;
 }
 .brand:hover { text-decoration: none; }
-.brand__mark { border-radius: 8px; display: block; }
+.brand__mark { font-size: 26px; line-height: 1; display: block; }
 .brand__word { font-size: 15px; }
 
 .site-header nav {
@@ -311,6 +311,23 @@ code { font-family: var(--mono); }
   letter-spacing: 0.22em;
 }
 
+/* ---------- cockpit (panel + cards split) ---------- */
+.cockpit {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: clamp(20px, 3.5vw, 44px);
+  align-items: center;
+}
+
+.panel--cockpit { max-width: 420px; justify-self: center; }
+
+.cockpit__cards { display: grid; gap: clamp(14px, 2vw, 22px); }
+
+@media (max-width: 980px) {
+  .cockpit { grid-template-columns: 1fr; }
+  .panel--cockpit { max-width: 480px; }
+}
+
 /* ---------- loadout cards ---------- */
 .loadout {
   display: grid;
@@ -339,6 +356,7 @@ code { font-family: var(--mono); }
 .card__cmd span { color: var(--acid); margin-right: 8px; }
 .card p { margin: 0; font-size: 13.5px; color: var(--ink-dim); }
 .card p code { color: var(--cyan); font-size: 12.5px; }
+.card p strong { color: var(--ink); }
 
 /* ---------- terminal (install) ---------- */
 .terminal {
@@ -441,7 +459,7 @@ footer {
   flex-wrap: wrap;
 }
 .footer__brand { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); letter-spacing: 0.1em; }
-.footer__brand img { border-radius: 5px; }
+.footer__mark { font-size: 18px; line-height: 1; }
 .footer__credit { font-size: 12px; opacity: 0.75; }
 
 /* ---------- reveal on scroll ---------- */
