@@ -1,4 +1,4 @@
-import { shellQuote } from "./platform.mjs";
+import { runnerHostKind, shellQuote } from "./platform.mjs";
 
 export const CHECK_STATUS = {
   PASS: "pass",
@@ -121,6 +121,11 @@ export async function getCurrentWifiSsid(runner, device) {
 }
 
 export async function connectHotspot(config, runner, { ssid, password, dryRun = false } = {}) {
+  if (runnerHostKind(runner) === "wsl") {
+    const { connectHotspotWsl } = await import("./wsl.mjs");
+    return connectHotspotWsl(config, runner, { ssid, password, dryRun });
+  }
+
   const expectedSsid = String(ssid ?? config.hotspot?.ssid ?? "").trim();
   if (!expectedSsid) {
     return {
@@ -229,7 +234,12 @@ export async function runDoctor(config, runner, { startRemotes = false, startGra
   const checks = [];
 
   if (runner.platform !== "darwin") {
-    checks.push(check("macos", "macOS host", CHECK_STATUS.FAIL, "Rucksack currently supports macOS laptops only."));
+    if (runnerHostKind(runner) === "wsl") {
+      const { runDoctorWsl } = await import("./wsl.mjs");
+      return runDoctorWsl(config, runner, { startRemotes, startGraceMs });
+    }
+
+    checks.push(check("macos", "macOS host", CHECK_STATUS.FAIL, "Rucksack supports macOS laptops and, experimentally, Windows laptops via WSL."));
     return summarize(checks);
   }
 
@@ -239,6 +249,14 @@ export async function runDoctor(config, runner, { startRemotes = false, startGra
   checks.push(await checkHotspot(config, runner));
   checks.push(await checkConnectivity(config, runner));
   checks.push(await checkTailnet(config, runner));
+
+  const exposePorts = config.expose?.ports ?? [];
+  if (exposePorts.length > 0) {
+    const { checkExposedPorts, checkFirewall } = await import("./expose.mjs");
+    checks.push(await checkFirewall(config, runner));
+    checks.push(...(await checkExposedPorts(config, runner, exposePorts)));
+  }
+
   checks.push(...(await checkRemotes(config, runner, { startRemotes, startGraceMs })));
 
   return summarize(checks);

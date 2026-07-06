@@ -65,6 +65,26 @@ test("pack dry run includes the watchdog when --watch is set", async () => {
   }
 });
 
+test("start refuses on non-macOS hosts even with --force", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "rucksack-cli-"));
+  const output = capture();
+  const errors = capture();
+
+  try {
+    const code = await main(["start", "--force", "--hotspot", "Phone", "--state", path.join(dir, "session.json")], {
+      stdout: output,
+      stderr: errors,
+      runner: fakeRunner({ platform: "linux" })
+    });
+
+    assert.equal(code, 1);
+    assert.match(errors.text, /requires macOS/);
+    assert.equal(output.text, "");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("hotspot connect command joins the requested SSID", async () => {
   const output = capture();
   const errors = capture();
@@ -89,10 +109,10 @@ function capture() {
   };
 }
 
-function fakeRunner({ initialSsid = "Phone" } = {}) {
+function fakeRunner({ initialSsid = "Phone", platform = "darwin" } = {}) {
   let currentSsid = initialSsid;
   return {
-    platform: "darwin",
+    platform,
     async exec(command) {
       const commands = {
         "pmset -g batt": {

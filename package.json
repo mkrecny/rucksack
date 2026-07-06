@@ -1,7 +1,7 @@
 {
   "name": "rucksack",
   "version": "0.1.0",
-  "description": "A macOS CLI that prepares local coding agents to keep running while your MacBook travels with you.",
+  "description": "A CLI for macOS (and, experimentally, Windows under WSL) that prepares local coding agents to keep running while your laptop travels with you.",
   "type": "module",
   "bin": {
     "rucksack": "./bin/rucksack.mjs"
@@ -16,6 +16,8 @@
   },
   "keywords": [
     "macos",
+    "wsl",
+    "windows",
     "caffeinate",
     "pmset",
     "codex",

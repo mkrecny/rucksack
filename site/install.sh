@@ -19,8 +19,14 @@ fail() { printf '  \033[31m\xe2\x96\x9e\xe2\x96\x9a rucksack\033[0m \xc2\xb7 %s\
 printf '\n'
 say "packing up..."
 
-[ "$(uname -s)" = "Darwin" ] || fail "Rucksack is macOS-only (found $(uname -s))."
-say "checking macOS ............ OK"
+HOST_OS="$(uname -s)"
+if [ "$HOST_OS" = "Darwin" ]; then
+  say "checking macOS ............ OK"
+elif [ "$HOST_OS" = "Linux" ] && grep -qi microsoft /proc/version 2>/dev/null; then
+  say "checking WSL .............. OK (experimental Windows backend)"
+else
+  fail "Rucksack needs macOS or Windows-under-WSL (found $HOST_OS)."
+fi
 
 command -v node >/dev/null 2>&1 || fail "Node.js 20+ is required. Install from https://nodejs.org or: brew install node"
 NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"

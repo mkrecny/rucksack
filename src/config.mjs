@@ -28,6 +28,9 @@ export function createDefaultConfig() {
     tailnet: {
       required: false
     },
+    expose: {
+      ports: []
+    },
     remotes: DEFAULT_REMOTE_NAMES.map((name) => ({
       name,
       command: name,
@@ -53,6 +56,14 @@ export async function fileExists(filePath) {
   } catch {
     return false;
   }
+}
+
+export function parsePorts(value) {
+  const ports = asArray(value)
+    .flatMap((entry) => String(entry).split(","))
+    .map((entry) => Number(entry.trim()))
+    .filter((port) => Number.isInteger(port) && port > 0 && port < 65536);
+  return [...new Set(ports)];
 }
 
 export function normalizeRemote(remote) {
@@ -116,6 +127,9 @@ export function normalizeConfig(input = {}) {
     tailnet: {
       required: Boolean(input.tailnet?.required ?? defaults.tailnet.required)
     },
+    expose: {
+      ports: parsePorts(input.expose?.ports ?? defaults.expose.ports)
+    },
     remotes: [...remotesByName.values()].map(normalizeRemote)
   };
 }
@@ -164,6 +178,11 @@ export function applyOptionOverrides(config, options = {}) {
 
   if (options["require-tailnet"]) {
     next.tailnet.required = true;
+  }
+
+  const requestedPorts = parsePorts(options.expose);
+  if (requestedPorts.length > 0) {
+    next.expose.ports = [...new Set([...next.expose.ports, ...requestedPorts])];
   }
 
   const requestedRemotes = asArray(options.remote);

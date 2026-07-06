@@ -19,6 +19,9 @@
   "tailnet": {
     "required": false
   },
+  "expose": {
+    "ports": []
+  },
   "remotes": [
     {
       "name": "codex",

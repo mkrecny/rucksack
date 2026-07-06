@@ -2,9 +2,10 @@ import { appendFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { applyOptionOverrides, defaultConfigPath, defaultStatePath, loadConfig, sampleConfig, writeConfig } from "./config.mjs";
-import { createRunner } from "./platform.mjs";
+import { createRunner, runnerHostKind } from "./platform.mjs";
 import { readSession, startSession, stopSession, writeSession } from "./session.mjs";
 import { connectHotspot, runDoctor } from "./checks.mjs";
+import { buildExposeReport } from "./expose.mjs";
 import { sendNotification } from "./notify.mjs";
 import { runWatchLoop } from "./watch.mjs";
 
@@ -79,6 +80,14 @@ async function doctorCommand(options, stdout, runner) {
 
 async function startCommand(options, stdout, stderr, runner) {
   const config = await getEffectiveConfig(options);
+  const host = runnerHostKind(runner);
+
+  if (runner.platform !== "darwin" && host !== "wsl" && !options.dryRun) {
+    stderr.write(
+      "Rucksack start requires macOS or Windows under WSL: this host has neither caffeinate/pmset nor Windows interop, and --force cannot override that. Use --dry-run to preview the commands.\n"
+    );
+    return 1;
+  }
 
   if (options["connect-hotspot"]) {
     const connected = await connectHotspot(config, runner, {
@@ -107,9 +116,21 @@ async function startCommand(options, stdout, stderr, runner) {
   const lidClosed = Boolean(config.power.lidClosed);
   if (lidClosed && !options.yes && !options.dryRun) {
     stderr.write(
-      "Lid-closed mode changes macOS sleep settings with sudo pmset. Re-run with --lid-closed --yes after checking ventilation and battery.\n"
+      host === "wsl"
+        ? "Lid-closed mode changes the Windows lid-close action with elevated powercfg (one UAC prompt). Re-run with --lid-closed --yes after checking ventilation and battery.\n"
+        : "Lid-closed mode changes macOS sleep settings with sudo pmset. Re-run with --lid-closed --yes after checking ventilation and battery.\n"
     );
     return 2;
+  }
+
+  const exposePorts = config.expose?.ports ?? [];
+  let exposeReport = null;
+  if (exposePorts.length > 0) {
+    try {
+      exposeReport = await buildExposeReport(config, runner, exposePorts);
+    } catch (error) {
+      stderr.write(`Could not resolve phone URLs for --expose: ${error.message}\n`);
+    }
   }
 
   const statePath = resolveStatePath(options);
@@ -123,7 +144,8 @@ async function startCommand(options, stdout, stderr, runner) {
       hotspotSsid: config.hotspot.ssid,
       requiredRemotes: config.remotes
         .filter((remote) => remote.required)
-        .map((remote) => remote.name)
+        .map((remote) => remote.name),
+      ...(exposeReport?.entries?.length ? { expose: exposeReport.entries } : {})
     }
   });
 
@@ -132,33 +154,53 @@ async function startCommand(options, stdout, stderr, runner) {
   if (options.dryRun) {
     const commands = [...started.commands];
     if (watchEnabled) {
-      commands.push(`rucksack watch-daemon --state ${statePath} (detached, log: ${watchLogPath(statePath)})`);
+      commands.push(
+        host === "wsl"
+          ? "(--watch is not supported on Windows/WSL yet; the session would run without it)"
+          : `rucksack watch-daemon --state ${statePath} (detached, log: ${watchLogPath(statePath)})`
+      );
     }
     stdout.write("Dry run. Commands that would be used:\n");
     stdout.write(commands.map((command) => `  ${command}`).join("\n"));
     stdout.write("\n");
+    writeExposeLines(exposeReport, stdout);
     return 0;
   }
 
   if (started.alreadyRunning) {
-    stdout.write(`Rucksack session already running with caffeinate PID ${started.session.pid}.\n`);
+    stdout.write(`Rucksack session already running with ${sessionPidLabel(started.session)}.\n`);
+    writeExposeLines(exposeReport, stdout);
     return 0;
   }
 
   if (started.cleanedStale) {
     stdout.write("Cleaned up stale Rucksack session state.\n");
   }
-  stdout.write(`Rucksack session started with caffeinate PID ${started.session.pid}.\n`);
+  stdout.write(`Rucksack session started with ${sessionPidLabel(started.session)}.\n`);
   stdout.write(`State saved to ${statePath}\n`);
+  writeExposeLines(exposeReport, stdout);
+
+  if (exposeReport?.notifyMessage && config.notify?.url) {
+    const sent = await sendNotification(config, runner, exposeReport.notifyMessage);
+    if (sent.ok) {
+      stdout.write(`Phone URLs pushed to ${config.notify.url}.\n`);
+    } else if (!sent.skipped) {
+      stderr.write(`Could not push phone URLs: ${sent.detail}\n`);
+    }
+  }
 
   if (watchEnabled) {
-    const watcherPid = spawnWatchDaemon({ runner, config, options, statePath });
-    if (watcherPid) {
-      started.session.watcherPid = watcherPid;
-      await writeSession(started.session, statePath);
-      stdout.write(`Watchdog running with PID ${watcherPid} (log: ${watchLogPath(statePath)}).\n`);
+    if (host === "wsl") {
+      stderr.write("The --watch watchdog is not supported on Windows/WSL yet; the session is running without it.\n");
     } else {
-      stderr.write("Could not start the watchdog process; the session is running without it.\n");
+      const watcherPid = spawnWatchDaemon({ runner, config, options, statePath });
+      if (watcherPid) {
+        started.session.watcherPid = watcherPid;
+        await writeSession(started.session, statePath);
+        stdout.write(`Watchdog running with PID ${watcherPid} (log: ${watchLogPath(statePath)}).\n`);
+      } else {
+        stderr.write("Could not start the watchdog process; the session is running without it.\n");
+      }
     }
   }
 
@@ -170,6 +212,18 @@ async function startCommand(options, stdout, stderr, runner) {
 
 function watchLogPath(statePath) {
   return path.join(path.dirname(statePath), "watch.log");
+}
+
+function sessionPidLabel(session) {
+  return session?.windowsPid
+    ? `Windows keep-awake PID ${session.windowsPid}`
+    : `caffeinate PID ${session?.pid}`;
+}
+
+function writeExposeLines(exposeReport, stdout) {
+  for (const line of exposeReport?.lines ?? []) {
+    stdout.write(`${line}\n`);
+  }
 }
 
 function spawnWatchDaemon({ runner, config, options, statePath }) {
@@ -253,13 +307,19 @@ async function statusCommand(options, stdout, runner) {
     return 0;
   }
 
-  const active = session.pid ? runner.isProcessAlive(Number(session.pid)) : false;
+  let active = false;
+  if (session.windowsPid) {
+    const { isWindowsProcessAlive } = await import("./wsl.mjs");
+    active = await isWindowsProcessAlive(runner, Number(session.windowsPid));
+  } else if (session.pid) {
+    active = runner.isProcessAlive(Number(session.pid));
+  }
   const payload = { active, session };
   if (options.json) {
     stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
   } else {
     stdout.write(`${active ? "Active" : "Stale"} Rucksack session\n`);
-    stdout.write(`  caffeinate PID: ${session.pid}\n`);
+    stdout.write(`  ${sessionPidLabel(session)}\n`);
     if (session.watcherPid) {
       const watcherAlive = runner.isProcessAlive(Number(session.watcherPid));
       stdout.write(`  watchdog PID: ${session.watcherPid} (${watcherAlive ? "running" : "not running"})\n`);
@@ -271,6 +331,11 @@ async function statusCommand(options, stdout, runner) {
     }
     if (session.metadata?.requiredRemotes?.length) {
       stdout.write(`  required remotes: ${session.metadata.requiredRemotes.join(", ")}\n`);
+    }
+    for (const entry of session.metadata?.expose ?? []) {
+      if (entry?.port && entry?.urls?.length) {
+        stdout.write(`  phone URL ${entry.port}: ${entry.urls.join(" · ")}\n`);
+      }
     }
     if (!active) {
       stdout.write("  run rucksack stop to clean up this state file\n");
@@ -447,8 +512,8 @@ function helpText() {
 
 Usage:
   rucksack init [--hotspot "Phone Hotspot"] [--local] [--force]
-  rucksack doctor [--hotspot "Phone Hotspot"] [--remote codex] [--json]
-  rucksack start [--hotspot "Phone Hotspot"] [--remote codex] [--start-remotes] [--watch] [--lid-closed --yes] [--dry-run]
+  rucksack doctor [--hotspot "Phone Hotspot"] [--remote codex] [--expose 3000] [--json]
+  rucksack start [--hotspot "Phone Hotspot"] [--remote codex] [--expose 3000] [--start-remotes] [--watch] [--lid-closed --yes] [--dry-run]
   rucksack pack [same options as start]
   rucksack stop [--dry-run]
   rucksack unpack [same options as stop]
@@ -465,6 +530,10 @@ Core options:
   --password password    Password for hotspot connect when it is not already in Keychain
   --allow-redacted-ssid  Trust active Wi-Fi when macOS hides the SSID from CLI tools
   --remote name          Mark a remote provider as required for this run
+  --expose port          A dev-server port your phone should reach over the hotspot
+                         (repeatable, or comma-separated). doctor checks the bind address
+                         and the macOS firewall; pack prints the phone URLs and pushes
+                         them to --notify-url.
   --watch                Keep a watchdog running after start: rejoins the hotspot if
                          Wi-Fi drops and restarts caffeinate if it dies (log: ~/.rucksack/watch.log)
   --watch-interval sec   Seconds between watchdog checks (default 20)
@@ -482,5 +551,11 @@ Safety:
   through a lid close on battery power, so normal (caffeinate) mode is for lid-open use only.
   Lid-closed mode uses sudo pmset and should only be used when you have verified ventilation,
   battery, network, and phone remote control for your MacBook.
+
+Windows/WSL (experimental):
+  On a Windows laptop, run Rucksack inside WSL where your agents live. Keep-awake is a hidden
+  Windows powershell process (SetThreadExecutionState); --lid-closed sets the Windows
+  lid-close action to "Do nothing" with one elevated powercfg write (a single UAC prompt)
+  and restores your previous setting on stop. --watch is not supported on WSL yet.
 `;
 }

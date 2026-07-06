@@ -2,6 +2,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { defaultStatePath, fileExists } from "./config.mjs";
 import { parsePmsetDisablesleep } from "./checks.mjs";
+import { runnerHostKind } from "./platform.mjs";
 
 export async function readSession(statePath = defaultStatePath()) {
   if (!(await fileExists(statePath))) return null;
@@ -26,6 +27,11 @@ export async function startSession({
   dryRun = false,
   metadata = {}
 }) {
+  if (runnerHostKind(runner) === "wsl") {
+    const { startSessionWsl } = await import("./wsl.mjs");
+    return startSessionWsl({ runner, statePath, lidClosed, dryRun, metadata });
+  }
+
   const existing = await readSession(statePath);
   if (existing && existing.pid) {
     const alive = typeof runner.isProcessAlive === "function"
@@ -125,6 +131,11 @@ export async function stopSession({
   statePath = defaultStatePath(),
   dryRun = false
 }) {
+  if (runnerHostKind(runner) === "wsl") {
+    const { stopSessionWsl } = await import("./wsl.mjs");
+    return stopSessionWsl({ runner, statePath, dryRun });
+  }
+
   const session = await readSession(statePath);
   if (!session) {
     return {
