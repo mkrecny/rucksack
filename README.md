@@ -30,6 +30,8 @@ You kicked off a long agent run. Codex is mid-refactor, Claude is grinding throu
 - **Watches the link while you move** — a watchdog rejoins the hotspot when Wi-Fi drops and revives the keep-awake process if it dies.
 - **Pings your phone when something breaks** — link lost, link restored, process revived. One ntfy.sh URL, zero infrastructure.
 
+> **Native remote control lets you steer the agent. Rucksack keeps the host alive and reachable while you move.** Codex, Claude, and friends already ship the phone-facing half; Rucksack is the other half — the ritual that makes sure the laptop is still awake, online, and on the right network when you reach for it.
+
 ## The run
 
 <table>
@@ -183,7 +185,30 @@ Default path: `~/.rucksack/config.json` (create it with `rucksack init --hotspot
 }
 ```
 
-Remote-control commands stay configurable because each agent CLI exposes different verbs. The codex preset reflects what the CLI actually ships today: `codex remote-control` runs the daemon (there is no `status` verb, so `pgrep` checks the process). Claude, agy, and Grok currently expose no local remote-control daemon for Rucksack to verify — Claude Code sessions are steered remotely through claude.ai/code instead. With `--start-remotes`, Rucksack starts a missing remote detached (so long-running daemons work) and re-checks after a grace period.
+Remote-control commands stay configurable because each agent CLI exposes different verbs. Two presets ship working out of the box:
+
+- **Codex** — `codex remote-control` runs the daemon (there is no `status` verb, so `pgrep -f 'codex remote-control'` checks the process).
+- **Claude** — Claude Code now ships remote control: `claude remote-control` runs a persistent server that connects to claude.ai/code and the Claude mobile app while execution stays local. `pgrep -f 'claude remote-control'` is a reliable check. (Requires a Claude subscription, `claude` already authenticated, and the working directory trusted once — see the setup guide below.)
+
+`agy` and `grok` remain empty presets — fill in their `statusCommand`/`startCommand` if they gain a local remote surface. With `--start-remotes`, Rucksack starts a missing remote detached (so long-running daemons work) and re-checks after a grace period.
+
+### Setup: pairing your phone with the agent
+
+Rucksack keeps the host alive and reachable; the agent's own remote-control feature is what you actually steer from your phone. Set that half up once:
+
+**Codex**
+
+1. Enable mobile access in Codex and sign in on your phone.
+2. Confirm the Mac shows up as online in the Codex mobile app.
+3. `rucksack doctor --remote codex` (it verifies the daemon via `pgrep`).
+4. Pack.
+
+**Claude**
+
+1. Run `claude remote-control` once; scan the QR / open the URL to link claude.ai/code or the Claude app.
+2. Confirm the session appears in Claude mobile and that `claude` is authenticated (`claude` runs cleanly in your project once, so the directory is trusted).
+3. `rucksack doctor --remote claude`.
+4. Pack.
 
 ## Security
 

@@ -269,6 +269,11 @@ code { font-family: var(--mono); }
   font-size: clamp(15px, 1.8vw, 17px);
 }
 .lede strong { color: var(--ink); }
+.lede--muted {
+  margin-top: -12px;
+  font-size: clamp(13px, 1.5vw, 15px);
+  opacity: 0.82;
+}
 
 /* install one-liner */
 .install-line {

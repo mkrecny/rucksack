@@ -31,14 +31,17 @@ test("applyOptionOverrides sets hotspot and required remotes", () => {
   assert.equal(config.remotes.find((remote) => remote.name === "grok").required, true);
 });
 
-test("sampleConfig includes a working codex remote-control preset", () => {
+test("sampleConfig includes working codex and claude remote-control presets", () => {
   const config = sampleConfig({ hotspot: "Phone" });
   const codex = config.remotes.find((remote) => remote.name === "codex");
+  const claude = config.remotes.find((remote) => remote.name === "claude");
 
   assert.equal(config.hotspot.ssid, "Phone");
   assert.equal(codex.required, false);
   assert.equal(codex.statusCommand, "pgrep -f 'codex remote-control'");
   assert.equal(codex.startCommand, "codex remote-control");
+  assert.equal(claude.statusCommand, "pgrep -f 'claude remote-control'");
+  assert.equal(claude.startCommand, "claude remote-control");
 });
 
 test("normalizeConfig defaults notify and tailnet settings", () => {

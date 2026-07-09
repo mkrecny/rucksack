@@ -288,8 +288,8 @@ export function sampleConfig({ hotspot = "" } = {}) {
       name: "claude",
       command: "claude",
       required: false,
-      statusCommand: "",
-      startCommand: ""
+      statusCommand: "pgrep -f 'claude remote-control'",
+      startCommand: "claude remote-control"
     },
     {
       name: "agy",
