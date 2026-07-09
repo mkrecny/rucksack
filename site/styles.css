@@ -456,9 +456,22 @@ code { font-family: var(--mono); }
 /* ---------- terminal (install) ---------- */
 .terminal {
   max-width: 780px;
+  margin: 0 auto;
   background: #05070c;
   border: 1px solid rgba(55, 242, 255, 0.35);
   box-shadow: 10px 10px 0 rgba(55, 242, 255, 0.12);
+}
+
+.install-note {
+  max-width: 780px;
+  margin: 18px auto 0;
+  color: var(--ink-dim);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.install-note code {
+  color: var(--ink);
+  font-size: 0.92em;
 }
 
 .terminal__bar {

@@ -68,8 +68,8 @@
       <!-- ============ TICKER ============ -->
       <div class="ticker" aria-hidden="true">
         <div class="ticker__track">
-          <span>MACOS ✓&nbsp;&nbsp;POWER TOOLS ✓&nbsp;&nbsp;BATTERY ✓&nbsp;&nbsp;HOTSPOT ✓&nbsp;&nbsp;INTERNET ✓&nbsp;&nbsp;TAILNET ✓&nbsp;&nbsp;REMOTES ✓&nbsp;&nbsp;— PACK · LID CLOSED · WATCHDOG LIVE · PHONE ALERTS ARMED —&nbsp;&nbsp;</span>
-          <span>MACOS ✓&nbsp;&nbsp;POWER TOOLS ✓&nbsp;&nbsp;BATTERY ✓&nbsp;&nbsp;HOTSPOT ✓&nbsp;&nbsp;INTERNET ✓&nbsp;&nbsp;TAILNET ✓&nbsp;&nbsp;REMOTES ✓&nbsp;&nbsp;— PACK · LID CLOSED · WATCHDOG LIVE · PHONE ALERTS ARMED —&nbsp;&nbsp;</span>
+          <span>MACOS ✓&nbsp;&nbsp;POWER TOOLS ✓&nbsp;&nbsp;BATTERY ✓&nbsp;&nbsp;HOTSPOT ✓&nbsp;&nbsp;INTERNET ✓&nbsp;&nbsp;TAILNET ✓&nbsp;&nbsp;REMOTES ✓&nbsp;&nbsp;— PACK · LID CLOSED · WATCHDOG LIVE · BATTERY FLOOR · THERMAL WATCH · PHONE ALERTS ARMED —&nbsp;&nbsp;</span>
+          <span>MACOS ✓&nbsp;&nbsp;POWER TOOLS ✓&nbsp;&nbsp;BATTERY ✓&nbsp;&nbsp;HOTSPOT ✓&nbsp;&nbsp;INTERNET ✓&nbsp;&nbsp;TAILNET ✓&nbsp;&nbsp;REMOTES ✓&nbsp;&nbsp;— PACK · LID CLOSED · WATCHDOG LIVE · BATTERY FLOOR · THERMAL WATCH · PHONE ALERTS ARMED —&nbsp;&nbsp;</span>
         </div>
       </div>
 
@@ -164,7 +164,11 @@
           </article>
           <article class="card">
             <code class="card__cmd"><span>$</span> rucksack pack --watch</code>
-            <p>A watchdog rides along: rejoins the hotspot when Wi-Fi drops, restarts the keep-awake process if it dies, logs everything.</p>
+            <p>A watchdog rides along: rejoins the hotspot when Wi-Fi drops, restarts the keep-awake process if it dies, and pings your phone if the CPU starts thermal-throttling in the bag. All logged.</p>
+          </article>
+          <article class="card">
+            <code class="card__cmd"><span>$</span> rucksack pack --warn-battery 20 --sleep-battery 10</code>
+            <p>Battery guardrails for a sealed laptop. At 20% your phone pings; at the 10% floor Rucksack <strong>restores normal sleep</strong> so the Mac sleeps and saves your work instead of running the battery flat.</p>
           </article>
           <article class="card">
             <code class="card__cmd"><span>$</span> rucksack notify test</code>
@@ -177,6 +181,10 @@
           <article class="card">
             <code class="card__cmd"><span>$</span> rucksack unpack</code>
             <p>Kills the watchdog, stops keep-awake, restores your saved previous sleep setting, cleans up state. No trace left behind.</p>
+          </article>
+          <article class="card">
+            <code class="card__cmd"><span>$</span> rucksack recover</code>
+            <p>The reassurance button. If a run was interrupted — crash, force-quit, killed watchdog — <code>recover</code> kills leftovers and restores the saved sleep setting, so a tool that touches global power config never strands your Mac awake.</p>
           </article>
         </div>
       </section>
@@ -208,8 +216,16 @@
               <code><span class="t-prompt">$</span> curl -fsSL https://rucksack.sh/install -o install.sh &amp;&amp; less install.sh</code>
               <button class="copy" type="button" data-copy="curl -fsSL https://rucksack.sh/install -o install.sh && less install.sh" aria-label="Copy inspect command">COPY</button>
             </div>
+            <div class="terminal__line terminal__line--dim">
+              <code><span class="t-prompt">$</span> <span class="t-comment"># it runs sudo — pin a reviewed release instead of tracking main:</span></code>
+            </div>
+            <div class="terminal__line">
+              <code><span class="t-prompt">$</span> RUCKSACK_REF=v0.2.0 curl -fsSL https://rucksack.sh/install | bash</code>
+              <button class="copy" type="button" data-copy="RUCKSACK_REF=v0.2.0 curl -fsSL https://rucksack.sh/install | bash" aria-label="Copy pinned install command">COPY</button>
+            </div>
           </div>
         </div>
+        <p class="install-note">Tagged releases, a <a href="https://github.com/mkrecny/rucksack/blob/main/CHANGELOG.md">changelog</a>, and CI on macOS + Linux — because this tool runs <code>sudo</code> and changes power settings. Secrets in <code>~/.rucksack</code> are written <code>0600</code>; the notify URL never rides in the watchdog's process arguments.</p>
       </section>
 
       <!-- ============ SAFETY ============ -->
