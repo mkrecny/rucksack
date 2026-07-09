@@ -173,7 +173,7 @@
           </article>
           <article class="card">
             <code class="card__cmd"><span>$</span> rucksack unpack</code>
-            <p>Kills the watchdog, stops keep-awake, restores your exact previous sleep settings, cleans up state. No trace left behind.</p>
+            <p>Kills the watchdog, stops keep-awake, restores your saved previous sleep setting, cleans up state. No trace left behind.</p>
           </article>
         </div>
       </section>
@@ -217,7 +217,7 @@
           <h2>STRAIGHT TALK</h2>
         </div>
         <ul class="straight">
-          <li><strong>Lid-closed mode is the real backpack mode.</strong> On battery, <code>caffeinate</code> alone can't survive a lid close — that's physics of macOS, not marketing. Rucksack uses <code>sudo pmset</code> and restores your exact previous setting.</li>
+          <li><strong>Lid-closed mode is the real backpack mode.</strong> On battery, <code>caffeinate</code> alone can't survive a lid close — that's physics of macOS, not marketing. Rucksack uses <code>sudo pmset</code> and restores your saved previous <code>disablesleep</code> value.</li>
           <li><strong>A laptop in a bag is a laptop in a bag.</strong> Agent work is mostly network-bound, so heat stays modest — but check your ventilation and battery before you zip. Rucksack checks with you; it can't bend thermodynamics.</li>
           <li><strong>Alerts ride the same link.</strong> If the hotspot is fully dead, the "it's dead" ping queues until something routes. A heartbeat dead-man's switch is on the roadmap.</li>
           <li><strong>Tailscale is optional.</strong> Agent remote surfaces are outbound-only — your phone never needs to reach the Mac. A tailnet only matters if you want direct ssh.</li>

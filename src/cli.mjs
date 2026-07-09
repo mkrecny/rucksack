@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { applyOptionOverrides, defaultConfigPath, defaultStatePath, loadConfig, sampleConfig, writeConfig } from "./config.mjs";
 import { createRunner, runnerHostKind } from "./platform.mjs";
-import { readSession, startSession, stopSession, writeSession } from "./session.mjs";
+import { readSession, recoverSession, startSession, stopSession, writeSession } from "./session.mjs";
 import { connectHotspot, runDoctor } from "./checks.mjs";
 import { buildExposeReport } from "./expose.mjs";
 import { sendNotification } from "./notify.mjs";
@@ -34,6 +34,8 @@ export async function main(argv = process.argv.slice(2), {
       case "stop":
       case "unpack":
         return await stopCommand(options, stdout, runner);
+      case "recover":
+        return await recoverCommand(options, stdout, stderr, runner);
       case "status":
         return await statusCommand(options, stdout, runner);
       case "remote":
@@ -173,6 +175,9 @@ async function startCommand(options, stdout, stderr, runner) {
     return 0;
   }
 
+  if (started.restoredStale) {
+    stdout.write(`Restored an interrupted lid-closed session (disablesleep -> ${started.restoredStale.to}) before starting.\n`);
+  }
   if (started.cleanedStale) {
     stdout.write("Cleaned up stale Rucksack session state.\n");
   }
@@ -298,6 +303,30 @@ async function stopCommand(options, stdout, runner) {
 
   stdout.write(stopped.stopped ? "Rucksack session stopped.\n" : "No active Rucksack session found.\n");
   return 0;
+}
+
+async function recoverCommand(options, stdout, stderr, runner) {
+  const result = await recoverSession({
+    runner,
+    statePath: resolveStatePath(options),
+    dryRun: Boolean(options.dryRun),
+    force: Boolean(options.yes || options.force)
+  });
+
+  if (options.dryRun) {
+    if (!result.commands?.length) {
+      stdout.write(result.detail ? `${result.detail}\n` : "Nothing to recover.\n");
+      return 0;
+    }
+    stdout.write("Dry run. Commands that would be used:\n");
+    stdout.write(`${result.commands.map((command) => `  ${command}`).join("\n")}\n`);
+    return 0;
+  }
+
+  if (result.detail) {
+    (result.needsConfirm ? stderr : stdout).write(`${result.detail}\n`);
+  }
+  return result.needsConfirm ? 1 : 0;
 }
 
 async function statusCommand(options, stdout, runner) {
@@ -517,6 +546,7 @@ Usage:
   rucksack pack [same options as start]
   rucksack stop [--dry-run]
   rucksack unpack [same options as stop]
+  rucksack recover [--yes] [--dry-run]
   rucksack status [--json]
   rucksack hotspot connect [ssid] [--password password] [--dry-run]
   rucksack notify test [--notify-url url]

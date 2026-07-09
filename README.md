@@ -82,7 +82,7 @@ On newer macOS versions, SSID access can be privacy-redacted for terminal proces
 
 ### Lid-closed mode (backpack mode)
 
-This is the mode the project is named for. On battery power, macOS sleeps a laptop when the lid closes and `caffeinate` cannot prevent it — so for the bag, Rucksack uses `sudo pmset -a disablesleep 1` and saves the previous setting so `rucksack stop` restores it exactly. Plain `caffeinate` mode is for lid-open use. (On [Windows under WSL](#windows-under-wsl-experimental), the same mode sets the Windows lid-close action to "Do nothing" with a single UAC-elevated `powercfg` write, and restores it on stop.)
+This is the mode the project is named for. On battery power, macOS sleeps a laptop when the lid closes and `caffeinate` cannot prevent it — so for the bag, Rucksack uses `sudo pmset -a disablesleep 1` and saves the previous `disablesleep` value so `rucksack stop` restores it. (It saves and restores the one `disablesleep` value with `pmset -a`; if you have set different sleep settings per power source, restore your saved value rather than assume a byte-for-byte profile snapshot.) Plain `caffeinate` mode is for lid-open use. (On [Windows under WSL](#windows-under-wsl-experimental), the same mode sets the Windows lid-close action to "Do nothing" with a single UAC-elevated `powercfg` write, and restores it on stop.)
 
 ```sh
 rucksack start --hotspot "My iPhone" --remote codex --lid-closed --yes
