@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -57,6 +57,29 @@ export async function fileExists(filePath) {
     return true;
   } catch {
     return false;
+  }
+}
+
+// ~/.rucksack holds a config that may carry an ntfy/webhook URL (a capability
+// secret) and a session file with operational details. Keep the directory 0700
+// and the files 0600. chmod is best-effort: it is a no-op on filesystems that
+// don't support POSIX modes (e.g. some Windows-mounted paths).
+export async function ensureSecureDir(dir) {
+  await mkdir(dir, { recursive: true });
+  try {
+    await chmod(dir, 0o700);
+  } catch {
+    // Best effort; the filesystem may not support POSIX permissions.
+  }
+}
+
+export async function secureWriteFile(filePath, data) {
+  await ensureSecureDir(path.dirname(filePath));
+  await writeFile(filePath, data, { mode: 0o600 });
+  try {
+    await chmod(filePath, 0o600);
+  } catch {
+    // Best effort; see ensureSecureDir.
   }
 }
 
@@ -245,9 +268,8 @@ export async function writeConfig(config, configPath = defaultConfigPath(), { fo
     throw new Error(`Config already exists at ${configPath}. Use --force to replace it.`);
   }
 
-  await mkdir(path.dirname(configPath), { recursive: true });
   const normalized = normalizeConfig(config);
-  await writeFile(configPath, `${JSON.stringify(normalized, null, 2)}\n`, "utf8");
+  await secureWriteFile(configPath, `${JSON.stringify(normalized, null, 2)}\n`);
   return normalized;
 }
 

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { readSession, recoverSession, startSession, stopSession, writeSession } from "../src/session.mjs";
@@ -198,6 +198,19 @@ test("recoverSession asks before touching a stranded disablesleep with no saved 
     const forced = await recoverSession({ runner, statePath, force: true });
     assert.equal(forced.recovered, true);
     assert.equal(runner.disablesleep, 0);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("writeSession stores state 0600 in a 0700 directory", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "rucksack-test-"));
+  const statePath = path.join(dir, "nested", "session.json");
+
+  try {
+    await writeSession({ pid: 1, lidClosed: false, startedAt: "2026-07-09T00:00:00.000Z" }, statePath);
+    assert.equal((await stat(statePath)).mode & 0o777, 0o600);
+    assert.equal((await stat(path.join(dir, "nested"))).mode & 0o777, 0o700);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

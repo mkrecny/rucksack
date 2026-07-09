@@ -1,4 +1,4 @@
-import { appendFileSync } from "node:fs";
+import { appendFileSync, chmodSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { applyOptionOverrides, defaultConfigPath, defaultStatePath, loadConfig, sampleConfig, writeConfig } from "./config.mjs";
@@ -246,10 +246,16 @@ function spawnWatchDaemon({ runner, config, options, statePath }) {
   if (config.hotspot?.strict === false) args.push("--no-strict-network");
   if (config.power?.warnBatteryPercent != null) args.push("--warn-battery", String(config.power.warnBatteryPercent));
   if (config.power?.floorBatteryPercent != null) args.push("--sleep-battery", String(config.power.floorBatteryPercent));
-  if (config.notify?.url) args.push("--notify-url", config.notify.url);
+
+  // The notify URL is a capability secret, so it must NOT ride in the long-lived
+  // watchdog's argv (visible to any `ps`). Pass it through the environment; the
+  // daemon reads RUCKSACK_NOTIFY_URL when no notify.url is in its config file.
+  const env = config.notify?.url
+    ? { ...process.env, RUCKSACK_NOTIFY_URL: config.notify.url }
+    : undefined;
 
   try {
-    const child = runner.spawnDetached(process.execPath, args);
+    const child = runner.spawnDetached(process.execPath, args, env ? { env } : {});
     return child?.pid ?? null;
   } catch {
     return null;
@@ -260,6 +266,23 @@ async function watchDaemonCommand(options, runner) {
   const config = await getEffectiveConfig(options);
   const statePath = resolveStatePath(options);
   const logPath = watchLogPath(statePath);
+
+  // The notify URL is passed via the environment (not argv) so it does not leak
+  // through `ps`. Fold it into the config the daemon uses to send alerts.
+  if (!config.notify?.url && process.env.RUCKSACK_NOTIFY_URL) {
+    config.notify = { ...(config.notify ?? {}), url: process.env.RUCKSACK_NOTIFY_URL };
+  }
+
+  // Create the log with restrictive permissions before anything is written.
+  try {
+    mkdirSync(path.dirname(logPath), { recursive: true });
+    chmodSync(path.dirname(logPath), 0o700);
+    appendFileSync(logPath, "", { mode: 0o600 });
+    chmodSync(logPath, 0o600);
+  } catch {
+    // Best effort; logging must never take down the watchdog.
+  }
+
   const requestedInterval = Number(options.interval);
   const intervalSeconds = Number.isFinite(requestedInterval) && requestedInterval > 0
     ? requestedInterval

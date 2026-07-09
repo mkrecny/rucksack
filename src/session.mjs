@@ -1,6 +1,5 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import path from "node:path";
-import { defaultStatePath, fileExists } from "./config.mjs";
+import { readFile, rm } from "node:fs/promises";
+import { defaultStatePath, fileExists, secureWriteFile } from "./config.mjs";
 import { parsePmsetDisablesleep } from "./checks.mjs";
 import { runnerHostKind } from "./platform.mjs";
 
@@ -10,8 +9,7 @@ export async function readSession(statePath = defaultStatePath()) {
 }
 
 export async function writeSession(session, statePath = defaultStatePath()) {
-  await mkdir(path.dirname(statePath), { recursive: true });
-  await writeFile(statePath, `${JSON.stringify(session, null, 2)}\n`, "utf8");
+  await secureWriteFile(statePath, `${JSON.stringify(session, null, 2)}\n`);
 }
 
 export async function removeSession(statePath = defaultStatePath()) {

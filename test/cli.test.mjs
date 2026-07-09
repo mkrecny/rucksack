@@ -85,6 +85,57 @@ test("start refuses on non-macOS hosts even with --force", async () => {
   }
 });
 
+test("watchdog receives the notify URL via env, never in argv", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "rucksack-cli-"));
+  const statePath = path.join(dir, "session.json");
+  const spawns = [];
+  const secret = "https://ntfy.sh/secret-topic";
+
+  const runner = {
+    platform: "darwin",
+    async exec(command) {
+      if (command.startsWith("curl ")) return { command, code: 0, stdout: "<HTML>Success</HTML>", stderr: "" };
+      if (command === "pmset -g batt") {
+        return { command, code: 0, stdout: "Now drawing from 'AC Power'\n -InternalBattery-0\t91%; charged;", stderr: "" };
+      }
+      if (command === "networksetup -listallhardwareports") {
+        return { command, code: 0, stdout: "Hardware Port: Wi-Fi\nDevice: en0\n", stderr: "" };
+      }
+      if (command === "networksetup -getairportnetwork 'en0'") {
+        return { command, code: 0, stdout: "Current Wi-Fi Network: Phone", stderr: "" };
+      }
+      return { command, code: 0, stdout: "", stderr: "" };
+    },
+    async commandExists(command) {
+      return command === "pmset" || command === "caffeinate";
+    },
+    spawnDetached(command, args = [], opts = {}) {
+      spawns.push({ command, args, opts });
+      return { pid: 4242 + spawns.length };
+    },
+    kill() {},
+    isProcessAlive() {
+      return false;
+    }
+  };
+
+  try {
+    const code = await main(
+      ["pack", "--hotspot", "Phone", "--watch", "--notify-url", secret, "--state", statePath],
+      { stdout: capture(), stderr: capture(), runner }
+    );
+
+    assert.equal(code, 0);
+    const daemon = spawns.find((entry) => entry.args.includes("watch-daemon"));
+    assert.ok(daemon, "watch-daemon should be spawned");
+    assert.equal(daemon.args.includes("--notify-url"), false);
+    assert.equal(daemon.args.some((arg) => String(arg).includes("secret-topic")), false);
+    assert.equal(daemon.opts.env.RUCKSACK_NOTIFY_URL, secret);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("hotspot connect command joins the requested SSID", async () => {
   const output = capture();
   const errors = capture();

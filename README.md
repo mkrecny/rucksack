@@ -185,6 +185,14 @@ Default path: `~/.rucksack/config.json` (create it with `rucksack init --hotspot
 
 Remote-control commands stay configurable because each agent CLI exposes different verbs. The codex preset reflects what the CLI actually ships today: `codex remote-control` runs the daemon (there is no `status` verb, so `pgrep` checks the process). Claude, agy, and Grok currently expose no local remote-control daemon for Rucksack to verify — Claude Code sessions are steered remotely through claude.ai/code instead. With `--start-remotes`, Rucksack starts a missing remote detached (so long-running daemons work) and re-checks after a grace period.
 
+## Security
+
+Rucksack runs `sudo` and changes global power settings, so it tries to earn that trust:
+
+- **Secrets stay locked down.** `~/.rucksack/` is created `0700`, and `config.json`, `session.json`, and `watch.log` are written `0600`. An ntfy topic or webhook URL is effectively a capability secret — anyone who learns it can post to (or read) your alerts.
+- **The notify URL never rides in `argv`.** The long-lived watchdog is launched without `--notify-url` on its command line (which any `ps` could read); the URL is passed through the environment (`RUCKSACK_NOTIFY_URL`) or read from your `0600` config file instead.
+- **Inspect before you run.** `curl … | bash` is convenient, but you can always `curl -fsSL https://rucksack.sh/install -o install.sh`, read it, then run it. Pin a specific release with `RUCKSACK_REF` (see [Install](#install-today-by-hand)).
+
 ## Straight talk
 
 - **A laptop in a bag is a laptop in a bag.** Agent *reasoning* is network-bound, but the commands agents run — test suites, builds, Docker, browsers, local databases, compilers, local models — can peg the CPU. Test your actual workload before carrying a closed laptop, keep vents unobstructed, and don't charge it inside a closed bag. With `--watch`, Rucksack monitors thermal pressure and battery and pings your phone — but it can't bend thermodynamics.

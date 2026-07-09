@@ -53,11 +53,11 @@ export function createRunner({
       const result = await this.exec(`command -v ${shellQuote(command)}`);
       return result.code === 0 && result.stdout.trim().length > 0;
     },
-    spawnDetached(command, args = []) {
+    spawnDetached(command, args = [], { env: envOverride } = {}) {
       const child = spawn(command, args, {
         detached: true,
         stdio: "ignore",
-        env
+        env: envOverride ?? env
       });
       child.unref();
       return { pid: child.pid };

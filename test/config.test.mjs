@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyOptionOverrides, createDefaultConfig, normalizeConfig, sampleConfig } from "../src/config.mjs";
+import { mkdtemp, rm, stat } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { applyOptionOverrides, createDefaultConfig, normalizeConfig, sampleConfig, writeConfig } from "../src/config.mjs";
 import { parseOptions } from "../src/cli.mjs";
 
 test("normalizeConfig keeps default remotes and merges configured remotes", () => {
@@ -53,6 +56,33 @@ test("applyOptionOverrides sets notify url and tailnet requirement", () => {
 
   assert.equal(config.notify.url, "https://ntfy.sh/my-rucksack");
   assert.equal(config.tailnet.required, true);
+});
+
+test("normalizeConfig and overrides handle battery thresholds", () => {
+  const defaults = normalizeConfig({});
+  assert.equal(defaults.power.warnBatteryPercent, null);
+  assert.equal(defaults.power.floorBatteryPercent, null);
+
+  const configured = normalizeConfig({ power: { warnBatteryPercent: 25, floorBatteryPercent: 200 } });
+  assert.equal(configured.power.warnBatteryPercent, 25);
+  assert.equal(configured.power.floorBatteryPercent, 100); // clamped to 0..100
+
+  const overridden = applyOptionOverrides(createDefaultConfig(), { "warn-battery": "20", "sleep-battery": "10" });
+  assert.equal(overridden.power.warnBatteryPercent, 20);
+  assert.equal(overridden.power.floorBatteryPercent, 10);
+});
+
+test("writeConfig writes the config file with 0600 permissions", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "rucksack-cfg-"));
+  const configPath = path.join(dir, "nested", "config.json");
+
+  try {
+    await writeConfig(createDefaultConfig(), configPath);
+    assert.equal((await stat(configPath)).mode & 0o777, 0o600);
+    assert.equal((await stat(path.join(dir, "nested"))).mode & 0o777, 0o700);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 test("parseOptions supports repeated options and inline values", () => {
