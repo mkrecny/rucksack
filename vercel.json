@@ -6,6 +6,10 @@
   "rewrites": [{ "source": "/install", "destination": "/install.sh" }],
   "headers": [
     {
+      "source": "/install",
+      "headers": [{ "key": "content-type", "value": "text/plain; charset=utf-8" }]
+    },
+    {
       "source": "/install.sh",
       "headers": [{ "key": "content-type", "value": "text/plain; charset=utf-8" }]
     }

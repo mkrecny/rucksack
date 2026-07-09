@@ -8,3 +8,5 @@ npm-debug.log*
 AGENTS.md
 FABLE.md
 CONCEPT.md
+.vercel
+.env*

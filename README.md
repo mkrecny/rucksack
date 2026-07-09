@@ -19,7 +19,7 @@ Your coding agents keep working — lid closed, in the bag, on your phone's hots
 curl -fsSL https://rucksack.sh/install | bash
 ```
 
-> The one-liner goes live with [rucksack.sh](https://rucksack.sh). Until then: `git clone` this repo, `npm install && npm link`, done.
+> Live at [rucksack.sh](https://rucksack.sh). Prefer to do it by hand? `git clone` this repo, `npm install && npm link`, done.
 
 ---
 
