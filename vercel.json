@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "outputDirectory": "site",
+  "cleanUrls": false,
+  "trailingSlash": false,
+  "rewrites": [{ "source": "/install", "destination": "/install.sh" }],
+  "headers": [
+    {
+      "source": "/install.sh",
+      "headers": [{ "key": "content-type", "value": "text/plain; charset=utf-8" }]
+    }
+  ]
+}
