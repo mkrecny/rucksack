@@ -13,8 +13,8 @@ test("watchTick reports ok while connected to the expected hotspot", async () =>
 
   try {
     await writeSession({ pid: 4242, startedAt: "2026-07-03T00:00:00.000Z", lidClosed: false }, statePath);
-    const config = configWithHotspot("perthull");
-    const runner = wifiRunner({ ssid: "perthull" });
+    const config = configWithHotspot("dev-hotspot");
+    const runner = wifiRunner({ ssid: "dev-hotspot" });
 
     const tick = await watchTick({ runner, config, statePath });
 
@@ -32,15 +32,15 @@ test("watchTick rejoins the hotspot when Wi-Fi drops", async () => {
 
   try {
     await writeSession({ pid: 4242, startedAt: "2026-07-03T00:00:00.000Z", lidClosed: false }, statePath);
-    const config = configWithHotspot("perthull");
-    const runner = wifiRunner({ ssid: "", rejoinTo: "perthull" });
+    const config = configWithHotspot("dev-hotspot");
+    const runner = wifiRunner({ ssid: "", rejoinTo: "dev-hotspot" });
 
     const tick = await watchTick({ runner, config, statePath });
 
     assert.equal(tick.ok, true);
-    assert.ok(runner.commands.includes("networksetup -setairportnetwork 'en0' 'perthull'"));
+    assert.ok(runner.commands.includes("networksetup -setairportnetwork 'en0' 'dev-hotspot'"));
     assert.match(tick.events.join("\n"), /attempting to rejoin/);
-    assert.match(tick.events.join("\n"), /Connected to perthull/);
+    assert.match(tick.events.join("\n"), /Connected to dev-hotspot/);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -52,8 +52,8 @@ test("watchTick restarts caffeinate when the keep-awake process died", async () 
 
   try {
     await writeSession({ pid: 9999, startedAt: "2026-07-03T00:00:00.000Z", lidClosed: false }, statePath);
-    const config = configWithHotspot("perthull");
-    const runner = wifiRunner({ ssid: "perthull", alivePids: [], spawnPid: 5151 });
+    const config = configWithHotspot("dev-hotspot");
+    const runner = wifiRunner({ ssid: "dev-hotspot", alivePids: [], spawnPid: 5151 });
 
     const tick = await watchTick({ runner, config, statePath });
 
@@ -73,8 +73,8 @@ test("runWatchLoop exits when the session state is removed", async () => {
 
   try {
     const result = await runWatchLoop({
-      runner: wifiRunner({ ssid: "perthull" }),
-      config: configWithHotspot("perthull"),
+      runner: wifiRunner({ ssid: "dev-hotspot" }),
+      config: configWithHotspot("dev-hotspot"),
       statePath,
       log: (line) => logs.push(line),
       intervalMs: 1,
@@ -99,7 +99,7 @@ test("runWatchLoop notifies once on trouble, not on every failing tick", async (
 
     await runWatchLoop({
       runner: wifiRunner({ ssid: "", rejoinFails: true }),
-      config: configWithHotspot("perthull"),
+      config: configWithHotspot("dev-hotspot"),
       statePath,
       notify: async (message) => {
         notifications.push(message);
@@ -111,7 +111,7 @@ test("runWatchLoop notifies once on trouble, not on every failing tick", async (
 
     assert.equal(notifications.length, 1);
     assert.match(notifications[0], /connection trouble/);
-    assert.match(notifications[0], /perthull/);
+    assert.match(notifications[0], /dev-hotspot/);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -126,8 +126,8 @@ test("runWatchLoop logs link transitions and stops at maxTicks", async () => {
     await writeSession({ pid: 4242, startedAt: "2026-07-03T00:00:00.000Z", lidClosed: false }, statePath);
 
     const result = await runWatchLoop({
-      runner: wifiRunner({ ssid: "perthull" }),
-      config: configWithHotspot("perthull"),
+      runner: wifiRunner({ ssid: "dev-hotspot" }),
+      config: configWithHotspot("dev-hotspot"),
       statePath,
       log: (line) => logs.push(line),
       intervalMs: 1,

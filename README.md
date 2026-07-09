@@ -110,7 +110,7 @@ The phone and the Mac share the hotspot's tiny LAN, so "localhost:3000 on your p
 rucksack pack --expose 3000 --notify-url https://ntfy.sh/your-private-topic
 ```
 
-- **Pack prints the URLs to tap** — `http://172.20.10.2:3000 · http://myles-mbp.local:3000` — pushes them to your ntfy topic so they're on the phone when you are, and stores them in the session so `rucksack status` re-prints them at the café.
+- **Pack prints the URLs to tap** — `http://172.20.10.2:3000 · http://macbook.local:3000` — pushes them to your ntfy topic so they're on the phone when you are, and stores them in the session so `rucksack status` re-prints them at the café.
 - **Doctor checks the bind address** — a dev server bound to `127.0.0.1` is invisible to the phone, so `rucksack doctor --expose 3000` warns and names the fix: restart with `--host 0.0.0.0` (Vite needs `--host`, CRA needs `HOST=0.0.0.0`; Next.js already binds wide).
 - **Doctor flags the firewall-dialog trap** — with the macOS application firewall on, the *first* inbound connection to a new server can pop an Allow dialog that nobody can click with the lid closed. Open the URL from the phone once before you zip, or pre-allow the binary. (Block-all mode fails the check outright — the phone would never get through.)
 

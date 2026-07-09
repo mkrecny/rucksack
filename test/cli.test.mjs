@@ -89,7 +89,7 @@ test("hotspot connect command joins the requested SSID", async () => {
   const output = capture();
   const errors = capture();
 
-  const code = await main(["hotspot", "connect", "perthull"], {
+  const code = await main(["hotspot", "connect", "dev-hotspot"], {
     stdout: output,
     stderr: errors,
     runner: fakeRunner({ initialSsid: "Home" })
@@ -97,7 +97,7 @@ test("hotspot connect command joins the requested SSID", async () => {
 
   assert.equal(code, 0);
   assert.equal(errors.text, "");
-  assert.match(output.text, /Connected to perthull on en0/);
+  assert.match(output.text, /Connected to dev-hotspot on en0/);
 });
 
 function capture() {
@@ -125,8 +125,8 @@ function fakeRunner({ initialSsid = "Phone", platform = "darwin" } = {}) {
       if (command === "networksetup -getairportnetwork 'en0'") {
         return { command, code: 0, stdout: `Current Wi-Fi Network: ${currentSsid}`, stderr: "" };
       }
-      if (command === "networksetup -setairportnetwork 'en0' 'perthull'") {
-        currentSsid = "perthull";
+      if (command === "networksetup -setairportnetwork 'en0' 'dev-hotspot'") {
+        currentSsid = "dev-hotspot";
         return { command, code: 0, stdout: "", stderr: "" };
       }
       const result = commands[command] ?? { stdout: "" };

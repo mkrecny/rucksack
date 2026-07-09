@@ -3,3 +3,8 @@ coverage/
 .DS_Store
 .rucksack/
 npm-debug.log*
+
+# Local-only dev/handoff docs (not published)
+AGENTS.md
+FABLE.md
+CONCEPT.md

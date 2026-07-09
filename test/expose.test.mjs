@@ -19,12 +19,12 @@ import {
 
 const LSOF_WILDCARD =
   "COMMAND   PID  USER   FD   TYPE  DEVICE SIZE/OFF NODE NAME\n" +
-  "node    12345 myles   23u  IPv6  0xabc      0t0  TCP *:3000 (LISTEN)\n";
+  "node    12345 dev   23u  IPv6  0xabc      0t0  TCP *:3000 (LISTEN)\n";
 
 const LSOF_LOOPBACK =
   "COMMAND   PID  USER   FD   TYPE  DEVICE SIZE/OFF NODE NAME\n" +
-  "node    12345 myles   23u  IPv4  0xabc      0t0  TCP 127.0.0.1:3000 (LISTEN)\n" +
-  "node    12345 myles   24u  IPv6  0xabc      0t0  TCP [::1]:3000 (LISTEN)\n";
+  "node    12345 dev   23u  IPv4  0xabc      0t0  TCP 127.0.0.1:3000 (LISTEN)\n" +
+  "node    12345 dev   24u  IPv6  0xabc      0t0  TCP [::1]:3000 (LISTEN)\n";
 
 const SS_OUTPUT =
   "State    Recv-Q   Send-Q     Local Address:Port      Peer Address:Port  Process\n" +
@@ -82,7 +82,7 @@ test("checkExposedPorts passes with phone URLs when the bind is reachable", asyn
 
   assert.equal(result.status, "pass");
   assert.match(result.detail, /listening on \*:3000/);
-  assert.match(result.detail, /http:\/\/172\.20\.10\.2:3000 · http:\/\/myles-mbp\.local:3000/);
+  assert.match(result.detail, /http:\/\/172\.20\.10\.2:3000 · http:\/\/macbook\.local:3000/);
 });
 
 test("checkExposedPorts warns on loopback-only and on silent ports", async () => {
@@ -132,7 +132,7 @@ test("buildExposeReport composes phone URLs and the ntfy message", async () => {
   const report = await buildExposeReport(normalizeConfig({}), runner, [3000, 5173]);
 
   assert.equal(report.entries.length, 2);
-  assert.deepEqual(report.entries[0].urls, ["http://172.20.10.2:3000", "http://myles-mbp.local:3000"]);
+  assert.deepEqual(report.entries[0].urls, ["http://172.20.10.2:3000", "http://macbook.local:3000"]);
   assert.match(report.lines[1], /Phone URL for 5173/);
   assert.match(report.notifyMessage, /^Rucksack packed\. Dev URLs: 3000 → /);
 });
@@ -151,7 +151,7 @@ test("pack prints phone URLs, stores them in the session, and pushes them to ntf
     );
 
     assert.equal(code, 0);
-    assert.match(output.text, /Phone URL for 3000: http:\/\/172\.20\.10\.2:3000 · http:\/\/myles-mbp\.local:3000/);
+    assert.match(output.text, /Phone URL for 3000: http:\/\/172\.20\.10\.2:3000 · http:\/\/macbook\.local:3000/);
     assert.match(output.text, /Phone URLs pushed to https:\/\/ntfy\.sh\/test-topic/);
     assert.equal(state.notifications.length, 1);
     assert.match(state.notifications[0], /Rucksack packed\. Dev URLs: 3000/);
@@ -178,7 +178,7 @@ function capture() {
   };
 }
 
-function macRunner({ lsof = LSOF_WILDCARD, firewallState = 0, ip = "172.20.10.2", host = "myles-mbp" } = {}) {
+function macRunner({ lsof = LSOF_WILDCARD, firewallState = 0, ip = "172.20.10.2", host = "macbook" } = {}) {
   const state = { notifications: [] };
   const ok = (stdout) => ({ code: 0, stdout, stderr: "" });
 

@@ -90,7 +90,7 @@ test("checkHotspot can warn instead of fail when network strictness is disabled"
 
 test("checkHotspot explains active Wi-Fi with redacted SSID", async () => {
   const config = createDefaultConfig();
-  config.hotspot.ssid = "perthull";
+  config.hotspot.ssid = "dev-hotspot";
   const result = await checkHotspot(config, fakeRunner({
     "networksetup -listallhardwareports": { stdout: "Hardware Port: Wi-Fi\nDevice: en0\n" },
     "networksetup -getairportnetwork 'en0'": { stdout: "You are not associated with an AirPort network." },
@@ -103,7 +103,7 @@ test("checkHotspot explains active Wi-Fi with redacted SSID", async () => {
 
 test("checkHotspot can trust active Wi-Fi when SSID is redacted", async () => {
   const config = createDefaultConfig();
-  config.hotspot.ssid = "perthull";
+  config.hotspot.ssid = "dev-hotspot";
   config.hotspot.allowRedactedSsid = true;
   const result = await checkHotspot(config, fakeRunner({
     "networksetup -listallhardwareports": { stdout: "Hardware Port: Wi-Fi\nDevice: en0\n" },
@@ -129,35 +129,35 @@ test("connectHotspot connects and verifies the target SSID", async () => {
   const config = createDefaultConfig();
   const runner = statefulWifiRunner("Home");
 
-  const result = await connectHotspot(config, runner, { ssid: "perthull" });
+  const result = await connectHotspot(config, runner, { ssid: "dev-hotspot" });
 
   assert.equal(result.ok, true);
   assert.equal(result.alreadyConnected, false);
-  assert.equal(result.detail, "Connected to perthull on en0.");
+  assert.equal(result.detail, "Connected to dev-hotspot on en0.");
   assert.deepEqual(runner.commands, [
     "networksetup -listallhardwareports",
     "networksetup -getairportnetwork 'en0'",
-    "networksetup -setairportnetwork 'en0' 'perthull'",
+    "networksetup -setairportnetwork 'en0' 'dev-hotspot'",
     "networksetup -getairportnetwork 'en0'"
   ]);
 });
 
 test("connectHotspot does not reconnect when already on the target SSID", async () => {
   const config = createDefaultConfig();
-  const runner = statefulWifiRunner("perthull");
+  const runner = statefulWifiRunner("dev-hotspot");
 
-  const result = await connectHotspot(config, runner, { ssid: "perthull" });
+  const result = await connectHotspot(config, runner, { ssid: "dev-hotspot" });
 
   assert.equal(result.ok, true);
   assert.equal(result.alreadyConnected, true);
-  assert.equal(runner.commands.includes("networksetup -setairportnetwork 'en0' 'perthull'"), false);
+  assert.equal(runner.commands.includes("networksetup -setairportnetwork 'en0' 'dev-hotspot'"), false);
 });
 
 test("connectHotspot reports active Wi-Fi when macOS redacts post-join SSID", async () => {
   const config = createDefaultConfig();
   const runner = redactedWifiRunner();
 
-  const result = await connectHotspot(config, runner, { ssid: "perthull" });
+  const result = await connectHotspot(config, runner, { ssid: "dev-hotspot" });
 
   assert.equal(result.ok, true);
   assert.equal(result.verified, false);
@@ -323,7 +323,7 @@ function redactedWifiRunner() {
       if (command === "networksetup -getairportnetwork 'en0'") {
         return { command, code: 0, stdout: "You are not associated with an AirPort network.", stderr: "" };
       }
-      if (command === "networksetup -setairportnetwork 'en0' 'perthull'") {
+      if (command === "networksetup -setairportnetwork 'en0' 'dev-hotspot'") {
         return { command, code: 0, stdout: "", stderr: "" };
       }
       if (command === "ipconfig getsummary 'en0'") {
@@ -351,8 +351,8 @@ function statefulWifiRunner(initialSsid) {
       if (command === "networksetup -getairportnetwork 'en0'") {
         return { command, code: 0, stdout: runner.ssid ? `Current Wi-Fi Network: ${runner.ssid}` : "You are not associated with an AirPort network.", stderr: "" };
       }
-      if (command === "networksetup -setairportnetwork 'en0' 'perthull'") {
-        runner.ssid = "perthull";
+      if (command === "networksetup -setairportnetwork 'en0' 'dev-hotspot'") {
+        runner.ssid = "dev-hotspot";
         return { command, code: 0, stdout: "", stderr: "" };
       }
       return { command, code: 1, stdout: "", stderr: `unexpected command: ${command}` };

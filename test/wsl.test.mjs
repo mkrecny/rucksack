@@ -46,9 +46,9 @@ test("parseLidActionIndexes reads the LIDACTION block", () => {
 });
 
 test("parseNetshInterfaces handles connected, hidden, and missing Wi-Fi", () => {
-  const connected = parseNetshInterfaces(netshOutput("perthull"));
+  const connected = parseNetshInterfaces(netshOutput("dev-hotspot"));
   assert.equal(connected.connected, true);
-  assert.equal(connected.ssid, "perthull");
+  assert.equal(connected.ssid, "dev-hotspot");
   assert.equal(connected.name, "Wi-Fi");
   assert.equal(connected.redacted, false);
 
@@ -79,7 +79,7 @@ test("parseWin32Battery maps charge and discharging states", () => {
 
 test("runDoctorWsl passes end to end against Windows interop", async () => {
   const { runner } = wslRunner();
-  const result = await runDoctorWsl(config({ ssid: "perthull" }), runner);
+  const result = await runDoctorWsl(config({ ssid: "dev-hotspot" }), runner);
 
   assert.equal(result.ok, true);
   assert.equal(result.summary.fail, 0);
@@ -95,26 +95,26 @@ test("runDoctorWsl passes end to end against Windows interop", async () => {
 
 test("runDoctor routes WSL hosts to the Windows backend", async () => {
   const { runner } = wslRunner();
-  const result = await runDoctor(config({ ssid: "perthull" }), runner);
+  const result = await runDoctor(config({ ssid: "dev-hotspot" }), runner);
   assert.equal(result.checks[0].id, "host");
   assert.match(result.checks[0].detail, /Windows under WSL/);
 });
 
 test("runDoctorWsl fails on hotspot mismatch and low battery", async () => {
   const { runner } = wslRunner({ ssid: "Home", battery: { EstimatedChargeRemaining: 20, BatteryStatus: 1 } });
-  const result = await runDoctorWsl(config({ ssid: "perthull" }), runner);
+  const result = await runDoctorWsl(config({ ssid: "dev-hotspot" }), runner);
 
   assert.equal(result.ok, false);
   const byId = Object.fromEntries(result.checks.map((item) => [item.id, item]));
   assert.equal(byId.hotspot.status, "fail");
-  assert.match(byId.hotspot.detail, /Expected perthull; currently connected to Home/);
+  assert.match(byId.hotspot.detail, /Expected dev-hotspot; currently connected to Home/);
   assert.equal(byId.battery.status, "fail");
   assert.match(byId.battery.detail, /20% available; minimum is 35%/);
 });
 
 test("runDoctorWsl requires readable lid state for lid-closed mode", async () => {
   const { runner } = wslRunner();
-  const result = await runDoctorWsl(config({ ssid: "perthull", lidClosed: true }), runner);
+  const result = await runDoctorWsl(config({ ssid: "dev-hotspot", lidClosed: true }), runner);
   const powerTools = result.checks.find((item) => item.id === "power-tools");
   assert.equal(powerTools.status, "pass");
   assert.match(powerTools.detail, /lid-close restore state is readable \(AC 1 \/ DC 1\)/);
@@ -122,10 +122,10 @@ test("runDoctorWsl requires readable lid state for lid-closed mode", async () =>
 
 test("connectHotspot on WSL previews a netsh join", async () => {
   const { runner } = wslRunner({ ssid: "Home" });
-  const result = await connectHotspot(config({ ssid: "perthull" }), runner, { dryRun: true });
+  const result = await connectHotspot(config({ ssid: "dev-hotspot" }), runner, { dryRun: true });
   assert.equal(result.ok, true);
   assert.equal(result.dryRun, true);
-  assert.match(result.command, /netsh\.exe' wlan connect 'name=perthull'/);
+  assert.match(result.command, /netsh\.exe' wlan connect 'name=dev-hotspot'/);
 });
 
 test("startSessionWsl dry run previews keep-awake and the single UAC write", async () => {
@@ -250,7 +250,7 @@ test("CLI pack/status/unpack work end to end on a WSL host", async () => {
   try {
     const packOut = capture();
     const packErr = capture();
-    const packCode = await main(["pack", "--hotspot", "perthull", "--watch", "--state", statePath], {
+    const packCode = await main(["pack", "--hotspot", "dev-hotspot", "--watch", "--state", statePath], {
       stdout: packOut,
       stderr: packErr,
       runner
@@ -334,7 +334,7 @@ function qhOutput({ lidAc, lidDc }) {
 }
 
 function wslRunner({
-  ssid = "perthull",
+  ssid = "dev-hotspot",
   battery = { EstimatedChargeRemaining: 100, BatteryStatus: 2 },
   lidAc = 1,
   lidDc = 1,
