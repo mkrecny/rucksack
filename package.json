@@ -1,6 +1,6 @@
 {
   "name": "rucksack",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A CLI for macOS (and, experimentally, Windows under WSL) that prepares local coding agents to keep running while your laptop travels with you.",
   "type": "module",
   "bin": {

@@ -7,11 +7,14 @@
 # Overrides:
 #   RUCKSACK_REPO  git URL to install from (default: the canonical repo)
 #   RUCKSACK_HOME  where to keep the checkout (default: ~/.rucksack/app)
+#   RUCKSACK_REF   git tag/branch to pin (default: main). Pin a release, e.g.
+#                  RUCKSACK_REF=v0.2.0 curl -fsSL https://rucksack.sh/install | bash
 
 set -euo pipefail
 
 REPO_URL="${RUCKSACK_REPO:-https://github.com/mkrecny/rucksack.git}"
 INSTALL_DIR="${RUCKSACK_HOME:-$HOME/.rucksack/app}"
+REF="${RUCKSACK_REF:-}"
 
 say()  { printf '  \033[36m\xe2\x96\x9e\xe2\x96\x9a rucksack\033[0m \xc2\xb7 %s\n' "$*"; }
 fail() { printf '  \033[31m\xe2\x96\x9e\xe2\x96\x9a rucksack\033[0m \xc2\xb7 %s\n' "$*" >&2; exit 1; }
@@ -36,13 +39,24 @@ say "checking node >= 20 ....... OK ($(node -v))"
 command -v git >/dev/null 2>&1 || fail "git is required (xcode-select --install)."
 
 if [ -d "$INSTALL_DIR/.git" ]; then
-  say "updating existing install in $INSTALL_DIR"
-  git -C "$INSTALL_DIR" pull --ff-only --quiet || fail "could not update $INSTALL_DIR"
+  say "updating existing install in $INSTALL_DIR${REF:+ ($REF)}"
+  if [ -n "$REF" ]; then
+    git -C "$INSTALL_DIR" fetch --depth 1 --quiet origin "$REF" \
+      && git -C "$INSTALL_DIR" checkout --quiet FETCH_HEAD \
+      || fail "could not update $INSTALL_DIR to $REF"
+  else
+    git -C "$INSTALL_DIR" pull --ff-only --quiet || fail "could not update $INSTALL_DIR"
+  fi
 else
-  say "fetching into $INSTALL_DIR"
+  say "fetching into $INSTALL_DIR${REF:+ ($REF)}"
   mkdir -p "$(dirname "$INSTALL_DIR")"
-  git clone --depth 1 --quiet "$REPO_URL" "$INSTALL_DIR" \
-    || fail "could not clone $REPO_URL — if the repo moved, set RUCKSACK_REPO and re-run."
+  if [ -n "$REF" ]; then
+    git clone --depth 1 --branch "$REF" --quiet "$REPO_URL" "$INSTALL_DIR" \
+      || fail "could not clone $REPO_URL at $REF — check RUCKSACK_REF, or set RUCKSACK_REPO if the repo moved."
+  else
+    git clone --depth 1 --quiet "$REPO_URL" "$INSTALL_DIR" \
+      || fail "could not clone $REPO_URL — if the repo moved, set RUCKSACK_REPO and re-run."
+  fi
 fi
 
 npm install --global --silent "$INSTALL_DIR" \

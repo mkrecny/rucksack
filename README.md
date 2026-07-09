@@ -8,6 +8,7 @@
 Your coding agents keep working — lid closed, in the bag, on your phone's hotspot.</p>
 
 <p align="center">
+  <a href="https://github.com/mkrecny/rucksack/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/mkrecny/rucksack/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="macOS" src="https://img.shields.io/badge/macOS-backpack%20mode-37f2ff?style=flat-square">
   <img alt="Windows/WSL2" src="https://img.shields.io/badge/Windows%20%2F%20WSL2-experimental-ffb020?style=flat-square">
   <img alt="Node 20+" src="https://img.shields.io/badge/node-%E2%89%A5%2020-9dff00?style=flat-square">
@@ -69,6 +70,14 @@ rucksack doctor
 ```
 
 Requires Node 20+ on macOS — or, experimentally, on a Windows laptop [under WSL2](#windows-under-wsl-experimental). No runtime dependencies — the CLI is plain Node against `pmset`, `caffeinate`, `networksetup`, and `curl` on macOS, and against `powershell.exe`, `powercfg.exe`, and `netsh.exe` through WSL interop on Windows.
+
+Check what you're running with `rucksack version`. The `curl … | bash` installer tracks `main`; **pin a release** by setting `RUCKSACK_REF` (a tag or branch):
+
+```sh
+RUCKSACK_REF=v0.2.0 curl -fsSL https://rucksack.sh/install | bash
+```
+
+Because this tool runs `sudo` and changes power settings, tagged releases and a [CHANGELOG](CHANGELOG.md) exist so you can pin and review exactly what you install. CI runs the test suite on macOS and Linux (Node 20 and 22) for every push.
 
 ## Field manual
 

@@ -1,4 +1,4 @@
-import { appendFileSync, chmodSync, mkdirSync } from "node:fs";
+import { appendFileSync, chmodSync, mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { applyOptionOverrides, defaultConfigPath, defaultStatePath, loadConfig, sampleConfig, writeConfig } from "./config.mjs";
@@ -23,6 +23,11 @@ export async function main(argv = process.argv.slice(2), {
       case "--help":
       case "-h":
         stdout.write(helpText());
+        return 0;
+      case "version":
+      case "--version":
+      case "-v":
+        stdout.write(`rucksack ${readVersion()}\n`);
         return 0;
       case "init":
         return await initCommand(options, stdout);
@@ -218,6 +223,15 @@ async function startCommand(options, stdout, stderr, runner) {
 
 function watchLogPath(statePath) {
   return path.join(path.dirname(statePath), "watch.log");
+}
+
+function readVersion() {
+  try {
+    const pkgPath = fileURLToPath(new URL("../package.json", import.meta.url));
+    return JSON.parse(readFileSync(pkgPath, "utf8")).version ?? "unknown";
+  } catch {
+    return "unknown";
+  }
 }
 
 function sessionPidLabel(session) {
@@ -577,6 +591,7 @@ Usage:
   rucksack hotspot connect [ssid] [--password password] [--dry-run]
   rucksack notify test [--notify-url url]
   rucksack remote list
+  rucksack version
 
 Core options:
   --config path          Read a specific config file instead of ~/.rucksack/config.json
