@@ -151,7 +151,8 @@ async function startCommand(options, stdout, stderr, runner) {
     }
   });
 
-  const watchEnabled = Boolean(options.watch || config.watch?.enabled);
+  const batteryMonitor = config.power?.warnBatteryPercent != null || config.power?.floorBatteryPercent != null;
+  const watchEnabled = Boolean(options.watch || config.watch?.enabled || batteryMonitor);
 
   if (options.dryRun) {
     const commands = [...started.commands];
@@ -243,6 +244,8 @@ function spawnWatchDaemon({ runner, config, options, statePath }) {
   if (config.hotspot?.ssid) args.push("--hotspot", config.hotspot.ssid);
   if (config.hotspot?.allowRedactedSsid) args.push("--allow-redacted-ssid");
   if (config.hotspot?.strict === false) args.push("--no-strict-network");
+  if (config.power?.warnBatteryPercent != null) args.push("--warn-battery", String(config.power.warnBatteryPercent));
+  if (config.power?.floorBatteryPercent != null) args.push("--sleep-battery", String(config.power.floorBatteryPercent));
   if (config.notify?.url) args.push("--notify-url", config.notify.url);
 
   try {
@@ -567,6 +570,9 @@ Core options:
   --watch                Keep a watchdog running after start: rejoins the hotspot if
                          Wi-Fi drops and restarts caffeinate if it dies (log: ~/.rucksack/watch.log)
   --watch-interval sec   Seconds between watchdog checks (default 20)
+  --warn-battery pct     Watchdog pings your phone when battery falls to this % (enables --watch)
+  --sleep-battery pct    Safety floor: at this % on battery the watchdog restores normal
+                         sleep so the Mac sleeps to preserve work instead of dying (enables --watch)
   --notify-url url       ntfy.sh topic or webhook URL for watchdog alerts to your phone
   --require-tailnet      Fail doctor/start unless Tailscale is installed and running
   --minimum-battery pct  Override the configured battery threshold

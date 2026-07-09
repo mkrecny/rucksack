@@ -1,5 +1,5 @@
-import { connectHotspot, getCurrentWifiSsid, getWifiDevice } from "./checks.mjs";
-import { readSession, writeSession } from "./session.mjs";
+import { connectHotspot, getCurrentWifiSsid, getWifiDevice, parseBattery, parseThermalPressure } from "./checks.mjs";
+import { readSession, releaseLidClosed, writeSession } from "./session.mjs";
 
 export async function watchTick({ runner, config, statePath }) {
   const session = await readSession(statePath);
@@ -16,11 +16,16 @@ export async function watchTick({ runner, config, statePath }) {
     events.push(`caffeinate was not running; restarted it with PID ${child.pid}`);
   }
 
+  // Battery and thermal safety run every tick, before the network checks, so the
+  // safety floor can act even when the link is down. These flags ride on every
+  // return path below so the loop can notify once per transition.
+  const safety = await checkPowerSafety({ runner, config, session, statePath, events });
+
   const expectedSsid = String(config.hotspot?.ssid ?? "").trim();
   const wifi = await getWifiDevice(runner);
   if (!wifi.ok) {
     events.push(`Wi-Fi device unavailable: ${wifi.detail}`);
-    return { done: false, ok: false, events };
+    return { done: false, ok: false, events, ...safety };
   }
 
   const current = await getCurrentWifiSsid(runner, wifi.device);
@@ -28,7 +33,7 @@ export async function watchTick({ runner, config, statePath }) {
   if (!expectedSsid) {
     const linkUp = Boolean(current.ok && current.connected);
     if (!linkUp) events.push("Wi-Fi link is down and no hotspot SSID is configured to rejoin.");
-    return { done: false, ok: linkUp, events };
+    return { done: false, ok: linkUp, events, ...safety };
   }
 
   const onExpected = current.ok && (
@@ -37,7 +42,7 @@ export async function watchTick({ runner, config, statePath }) {
   );
 
   if (onExpected) {
-    return { done: false, ok: true, events };
+    return { done: false, ok: true, events, ...safety };
   }
 
   events.push(
@@ -48,7 +53,62 @@ export async function watchTick({ runner, config, statePath }) {
 
   const rejoined = await connectHotspot(config, runner, {});
   events.push(rejoined.ok ? `Rejoin: ${rejoined.detail}` : `Rejoin failed: ${rejoined.detail}`);
-  return { done: false, ok: rejoined.ok, events };
+  return { done: false, ok: rejoined.ok, events, ...safety };
+}
+
+// Continuous battery + thermal monitoring for a sealed laptop. Battery thresholds
+// are opt-in (--warn-battery / --sleep-battery); thermal is always read (cheap,
+// read-only). Returns { batteryWarn, floorTripped, thermalThrottled } and pushes
+// human-readable lines onto `events`.
+async function checkPowerSafety({ runner, config, session, statePath, events }) {
+  const warnAt = numOrNull(config.power?.warnBatteryPercent);
+  const floorAt = numOrNull(config.power?.floorBatteryPercent);
+
+  let batteryWarn = false;
+  let floorTripped = false;
+
+  if (!session.floorReleased && (warnAt !== null || floorAt !== null)) {
+    const result = await runner.exec("pmset -g batt");
+    const battery = result.code === 0 ? parseBattery(result.stdout) : null;
+    if (battery) {
+      const onBattery = !/AC Power/i.test(battery.source);
+      if (onBattery && floorAt !== null && battery.percent <= floorAt) {
+        if (session.lidClosed) {
+          const released = await releaseLidClosed({ runner, session, statePath, reason: "battery-floor" });
+          floorTripped = true;
+          events.push(
+            released.ok
+              ? `Battery ${battery.percent}% reached the ${floorAt}% floor; restored normal sleep (disablesleep ${released.to}) so the Mac can sleep instead of dying.`
+              : `Battery ${battery.percent}% reached the ${floorAt}% floor, but restoring normal sleep failed: ${released.detail} Run "rucksack recover".`
+          );
+        } else {
+          batteryWarn = true;
+          events.push(`Battery is ${battery.percent}% (at or under the ${floorAt}% floor).`);
+        }
+      } else if (onBattery && warnAt !== null && battery.percent <= warnAt) {
+        batteryWarn = true;
+        events.push(`Battery is ${battery.percent}% and falling.`);
+      }
+    }
+  }
+
+  let thermalThrottled = false;
+  const therm = await runner.exec("pmset -g therm");
+  if (therm.code === 0) {
+    const thermal = parseThermalPressure(therm.stdout);
+    if (thermal.throttled) {
+      thermalThrottled = true;
+      events.push(`Thermal pressure: the CPU is throttled to ${thermal.speedLimit}% inside the bag. Check ventilation before the next run.`);
+    }
+  }
+
+  return { batteryWarn, floorTripped, thermalThrottled };
+}
+
+function numOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 export async function runWatchLoop({
@@ -63,6 +123,9 @@ export async function runWatchLoop({
 }) {
   let ticks = 0;
   let lastOk = null;
+  let lastBatteryWarn = false;
+  let lastThermal = false;
+  let floorNotified = false;
 
   log(`Watch started (checking every ${Math.round(intervalMs / 1000)}s).`);
 
@@ -87,6 +150,24 @@ export async function runWatchLoop({
     if (tick.ok && restartEvent) {
       await safeNotify(notify, log, `Rucksack: ${restartEvent}`);
     }
+
+    // Safety-floor and low-battery/thermal alerts fire once per transition, not
+    // every tick, and independently of link state.
+    if (tick.floorTripped && !floorNotified) {
+      floorNotified = true;
+      const floorEvent = tick.events.find((event) => event.includes("floor"));
+      await safeNotify(notify, log, `Rucksack: ${floorEvent ?? "safety floor reached; restored normal sleep behaviour."}`);
+    }
+    if (tick.batteryWarn && !lastBatteryWarn) {
+      const warnEvent = tick.events.find((event) => event.toLowerCase().includes("battery"));
+      await safeNotify(notify, log, `Rucksack: ${warnEvent ?? "battery is low and falling."}`);
+    }
+    lastBatteryWarn = Boolean(tick.batteryWarn);
+    if (tick.thermalThrottled && !lastThermal) {
+      const thermalEvent = tick.events.find((event) => event.includes("Thermal"));
+      await safeNotify(notify, log, `Rucksack: ${thermalEvent ?? "thermal pressure detected inside the bag."}`);
+    }
+    lastThermal = Boolean(tick.thermalThrottled);
     if (tick.ok !== lastOk) {
       log(tick.ok ? "Link OK." : "Link NOT OK.");
       if (!tick.ok) {

@@ -255,6 +255,18 @@ export async function stopSession({
   };
 }
 
+// Give up lid-closed mode mid-session (e.g. the watchdog hit the battery floor):
+// restore the saved disablesleep value so the Mac can sleep instead of dying,
+// and mark the session so it is not re-managed or re-tripped.
+export async function releaseLidClosed({ runner, session, statePath, reason = "floor" }) {
+  const target = Number.isInteger(session.previousDisablesleep) ? session.previousDisablesleep : 0;
+  const restore = await restoreDisablesleep(runner, target);
+  session.lidClosed = false;
+  session.floorReleased = { reason, at: new Date().toISOString(), to: target, ok: restore.ok };
+  await writeSession(session, statePath);
+  return { ...restore, to: target };
+}
+
 // A reassurance utility: safely undo whatever a prior (possibly crashed) session
 // left behind — kill leftover processes and, above all, restore the saved
 // disablesleep value so the Mac is never stranded awake.

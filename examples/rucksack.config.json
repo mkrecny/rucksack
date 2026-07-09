@@ -7,7 +7,9 @@
   },
   "power": {
     "minimumBatteryPercent": 35,
-    "lidClosed": false
+    "lidClosed": false,
+    "warnBatteryPercent": null,
+    "floorBatteryPercent": null
   },
   "watch": {
     "enabled": false,

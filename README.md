@@ -91,7 +91,25 @@ rucksack stop
 
 ### The watchdog
 
-`--watch` keeps a watchdog running after you leave. Every 20 seconds (configurable with `--watch-interval` or `watch.intervalSeconds`) it rejoins the hotspot if Wi-Fi dropped, restarts `caffeinate` if it died, and logs to `watch.log` next to the session state file. `rucksack stop` shuts it down with the rest of the session.
+`--watch` keeps a watchdog running after you leave. Every 20 seconds (configurable with `--watch-interval` or `watch.intervalSeconds`) it rejoins the hotspot if Wi-Fi dropped, restarts `caffeinate` if it died, watches battery and thermal pressure (below), and logs to `watch.log` next to the session state file. `rucksack stop` shuts it down with the rest of the session.
+
+### Battery and thermal safety
+
+A laptop that passed pre-flight at 40% can run builds for an hour in the bag. With the watchdog running, two thresholds guard the trip (both enable `--watch` automatically):
+
+```sh
+rucksack pack --lid-closed --yes --warn-battery 20 --sleep-battery 10
+```
+
+- **`--warn-battery 20`** — at 20% on battery, ping your phone: *"battery is 20% and falling."*
+- **`--sleep-battery 10`** (the safety floor) — at 10% on battery, the watchdog **restores normal sleep** (undoes lid-closed mode) so the Mac sleeps and preserves your work instead of running the battery flat. It pings your phone and won't re-trip.
+- **Thermal** — the watchdog reads `pmset -g therm` every tick and pings once if macOS starts throttling the CPU under thermal pressure inside the bag.
+
+If the floor trips, `rucksack recover` (or `unpack`) cleans up as usual; the sleep setting is already restored.
+
+### Recovery
+
+`rucksack recover` is the reassurance command for a tool that changes global power settings. It kills any leftover keep-awake/watchdog processes and restores the saved `disablesleep` value from the session state. If it finds no session but `disablesleep` is still stuck at `1`, it tells you and, with `--yes`, restores normal sleep. Use it if a session was interrupted (crash, force-quit, killed watchdog) and you want to be certain the Mac is back to normal.
 
 ### Phone alerts
 
@@ -136,7 +154,9 @@ Default path: `~/.rucksack/config.json` (create it with `rucksack init --hotspot
   },
   "power": {
     "minimumBatteryPercent": 35,
-    "lidClosed": false
+    "lidClosed": false,
+    "warnBatteryPercent": null,
+    "floorBatteryPercent": null
   },
   "watch": {
     "enabled": false,
@@ -167,7 +187,7 @@ Remote-control commands stay configurable because each agent CLI exposes differe
 
 ## Straight talk
 
-- **A laptop in a bag is a laptop in a bag.** Agent work is mostly network-bound, so heat stays modest — but check ventilation and battery before you zip. Rucksack checks with you; it can't bend thermodynamics.
+- **A laptop in a bag is a laptop in a bag.** Agent *reasoning* is network-bound, but the commands agents run — test suites, builds, Docker, browsers, local databases, compilers, local models — can peg the CPU. Test your actual workload before carrying a closed laptop, keep vents unobstructed, and don't charge it inside a closed bag. With `--watch`, Rucksack monitors thermal pressure and battery and pings your phone — but it can't bend thermodynamics.
 - **Alerts ride the same link.** If the hotspot is fully dead, the "it's dead" ping queues until something routes. A heartbeat dead-man's switch is on the roadmap.
 - **iPhone hotspots are moody.** They stop advertising when idle, so watchdog rejoin is best-effort. Keep the phone awake-ish for best results.
 

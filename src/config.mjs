@@ -16,7 +16,9 @@ export function createDefaultConfig() {
     },
     power: {
       minimumBatteryPercent: 35,
-      lidClosed: false
+      lidClosed: false,
+      warnBatteryPercent: null,
+      floorBatteryPercent: null
     },
     watch: {
       enabled: false,
@@ -113,7 +115,9 @@ export function normalizeConfig(input = {}) {
       minimumBatteryPercent: Number.isFinite(minimumBatteryPercent)
         ? minimumBatteryPercent
         : defaults.power.minimumBatteryPercent,
-      lidClosed: Boolean(input.power?.lidClosed ?? defaults.power.lidClosed)
+      lidClosed: Boolean(input.power?.lidClosed ?? defaults.power.lidClosed),
+      warnBatteryPercent: toPercentOrNull(input.power?.warnBatteryPercent),
+      floorBatteryPercent: toPercentOrNull(input.power?.floorBatteryPercent)
     },
     watch: {
       enabled: Boolean(input.watch?.enabled ?? defaults.watch.enabled),
@@ -159,6 +163,20 @@ export function applyOptionOverrides(config, options = {}) {
 
   if (options["lid-closed"] || options.lid) {
     next.power.lidClosed = true;
+  }
+
+  if (options["warn-battery"] !== undefined) {
+    const value = Number(options["warn-battery"]);
+    if (Number.isFinite(value)) {
+      next.power.warnBatteryPercent = value;
+    }
+  }
+
+  if (options["sleep-battery"] !== undefined) {
+    const value = Number(options["sleep-battery"]);
+    if (Number.isFinite(value)) {
+      next.power.floorBatteryPercent = value;
+    }
   }
 
   if (options.watch) {
@@ -272,4 +290,13 @@ export function sampleConfig({ hotspot = "" } = {}) {
 function asArray(value) {
   if (value === undefined) return [];
   return Array.isArray(value) ? value : [value];
+}
+
+// Battery thresholds are opt-in: null/absent means "not monitored". Any other
+// finite number in 0..100 is honored; junk falls back to null (off).
+function toPercentOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return Math.min(100, Math.max(0, number));
 }

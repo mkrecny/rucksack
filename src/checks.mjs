@@ -66,6 +66,18 @@ export function parsePmsetDisablesleep(raw) {
   return match ? Number(match[1]) : null;
 }
 
+// `pmset -g therm` reports CPU_Speed_Limit; below 100 means macOS is throttling
+// the CPU under thermal pressure (the signal that matters for a sealed bag).
+export function parseThermalPressure(raw) {
+  const match = String(raw).match(/CPU_Speed_Limit\s*=\s*(\d+)/i);
+  const speedLimit = match ? Number(match[1]) : null;
+  return {
+    speedLimit,
+    throttled: speedLimit !== null && speedLimit < 100,
+    raw: String(raw).trim()
+  };
+}
+
 export async function getWifiDevice(runner) {
   const ports = await runner.exec("networksetup -listallhardwareports");
   if (ports.code !== 0 || looksLikeCommandFailure(ports)) {

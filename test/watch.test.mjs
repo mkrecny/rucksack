@@ -142,16 +142,127 @@ test("runWatchLoop logs link transitions and stops at maxTicks", async () => {
   }
 });
 
+test("watchTick restores normal sleep when battery hits the floor", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "rucksack-watch-"));
+  const statePath = path.join(dir, "session.json");
+
+  try {
+    await writeSession(
+      { pid: 4242, startedAt: "2026-07-03T00:00:00.000Z", lidClosed: true, previousDisablesleep: 0 },
+      statePath
+    );
+    const config = configWithHotspot("dev-hotspot");
+    config.power.floorBatteryPercent = 10;
+    const runner = wifiRunner({ ssid: "dev-hotspot", battPercent: 8, disablesleep: 1 });
+
+    const tick = await watchTick({ runner, config, statePath });
+
+    assert.equal(tick.floorTripped, true);
+    assert.match(tick.events.join("\n"), /floor/);
+    assert.equal(runner.disablesleep, 0);
+    const session = await readSession(statePath);
+    assert.equal(session.lidClosed, false);
+    assert.ok(session.floorReleased);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("watchTick warns when battery is low but above the floor", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "rucksack-watch-"));
+  const statePath = path.join(dir, "session.json");
+
+  try {
+    await writeSession(
+      { pid: 4242, startedAt: "2026-07-03T00:00:00.000Z", lidClosed: true, previousDisablesleep: 0 },
+      statePath
+    );
+    const config = configWithHotspot("dev-hotspot");
+    config.power.warnBatteryPercent = 20;
+    const runner = wifiRunner({ ssid: "dev-hotspot", battPercent: 18 });
+
+    const tick = await watchTick({ runner, config, statePath });
+
+    assert.equal(tick.batteryWarn, true);
+    assert.equal(tick.floorTripped, false);
+    assert.match(tick.events.join("\n"), /18% and falling/);
+    const session = await readSession(statePath);
+    assert.equal(session.lidClosed, true);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("watchTick flags thermal throttling inside the bag", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "rucksack-watch-"));
+  const statePath = path.join(dir, "session.json");
+
+  try {
+    await writeSession({ pid: 4242, startedAt: "2026-07-03T00:00:00.000Z", lidClosed: false }, statePath);
+    const config = configWithHotspot("dev-hotspot");
+    const runner = wifiRunner({ ssid: "dev-hotspot", speedLimit: 70 });
+
+    const tick = await watchTick({ runner, config, statePath });
+
+    assert.equal(tick.thermalThrottled, true);
+    assert.match(tick.events.join("\n"), /Thermal pressure/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("runWatchLoop notifies once when the battery floor trips", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "rucksack-watch-"));
+  const statePath = path.join(dir, "session.json");
+  const notifications = [];
+
+  try {
+    await writeSession(
+      { pid: 4242, startedAt: "2026-07-03T00:00:00.000Z", lidClosed: true, previousDisablesleep: 0 },
+      statePath
+    );
+    const config = configWithHotspot("dev-hotspot");
+    config.power.floorBatteryPercent = 10;
+
+    await runWatchLoop({
+      runner: wifiRunner({ ssid: "dev-hotspot", battPercent: 5, disablesleep: 1 }),
+      config,
+      statePath,
+      notify: async (message) => {
+        notifications.push(message);
+        return { ok: true };
+      },
+      intervalMs: 1,
+      maxTicks: 3
+    });
+
+    assert.equal(notifications.filter((message) => /floor/.test(message)).length, 1);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 function configWithHotspot(ssid) {
   const config = createDefaultConfig();
   config.hotspot.ssid = ssid;
   return config;
 }
 
-function wifiRunner({ ssid, rejoinTo = null, rejoinFails = false, alivePids = [4242], spawnPid = 4242 } = {}) {
+function wifiRunner({
+  ssid,
+  rejoinTo = null,
+  rejoinFails = false,
+  alivePids = [4242],
+  spawnPid = 4242,
+  battPercent = null,
+  battSource = "Battery Power",
+  speedLimit = 100,
+  disablesleep = 0
+} = {}) {
   const runner = {
     platform: "darwin",
     ssid,
+    disablesleep,
     commands: [],
     async exec(command) {
       runner.commands.push(command);
@@ -175,6 +286,25 @@ function wifiRunner({ ssid, rejoinTo = null, rejoinFails = false, alivePids = [4
       }
       if (command.startsWith("ipconfig getsummary")) {
         return { command, code: 0, stdout: "InterfaceType : WiFi\nLinkStatusActive : FALSE\n", stderr: "" };
+      }
+      if (command === "pmset -g batt") {
+        if (battPercent === null) return { command, code: 0, stdout: "", stderr: "" };
+        return {
+          command,
+          code: 0,
+          stdout: `Now drawing from '${battSource}'\n -InternalBattery-0\t${battPercent}%; discharging; 1:30 remaining present: true`,
+          stderr: ""
+        };
+      }
+      if (command === "pmset -g therm") {
+        return { command, code: 0, stdout: `CPU_Speed_Limit \t= ${speedLimit}`, stderr: "" };
+      }
+      if (command === "pmset -g custom") {
+        return { command, code: 0, stdout: `disablesleep ${runner.disablesleep}\n`, stderr: "" };
+      }
+      if (command.startsWith("sudo pmset -a disablesleep ")) {
+        runner.disablesleep = Number(command.split(" ").at(-1));
+        return { command, code: 0, stdout: "", stderr: "" };
       }
       return { command, code: 0, stdout: "", stderr: "" };
     },
