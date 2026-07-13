@@ -253,14 +253,18 @@ export async function stopSession({
   };
 }
 
-// Give up lid-closed mode mid-session (e.g. the watchdog hit the battery floor):
-// restore the saved disablesleep value so the Mac can sleep instead of dying,
-// and mark the session so it is not re-managed or re-tripped.
+// Give up lid-closed mode mid-session (e.g. the watchdog hit a battery or
+// thermal safety condition): restore the saved disablesleep value so the Mac
+// can sleep. A failed restore deliberately leaves lidClosed=true so stop,
+// recover, or the next watchdog tick can retry instead of losing recovery state.
 export async function releaseLidClosed({ runner, session, statePath, reason = "floor" }) {
   const target = Number.isInteger(session.previousDisablesleep) ? session.previousDisablesleep : 0;
   const restore = await restoreDisablesleep(runner, target);
-  session.lidClosed = false;
-  session.floorReleased = { reason, at: new Date().toISOString(), to: target, ok: restore.ok };
+  const release = { reason, at: new Date().toISOString(), to: target, ok: restore.ok };
+  session.safetyRelease = release;
+  // Keep the legacy field for existing status consumers and session files.
+  if (reason === "battery-floor") session.floorReleased = release;
+  if (restore.ok) session.lidClosed = false;
   await writeSession(session, statePath);
   return { ...restore, to: target };
 }

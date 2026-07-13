@@ -211,6 +211,57 @@ test("watchTick flags thermal throttling inside the bag", async () => {
   }
 });
 
+test("watchTick restores normal sleep when thermal pressure hits lid-closed mode", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "rucksack-watch-"));
+  const statePath = path.join(dir, "session.json");
+
+  try {
+    await writeSession(
+      { pid: 4242, startedAt: "2026-07-03T00:00:00.000Z", lidClosed: true, previousDisablesleep: 0 },
+      statePath
+    );
+    const config = configWithHotspot("dev-hotspot");
+    const runner = wifiRunner({ ssid: "dev-hotspot", speedLimit: 70, disablesleep: 1 });
+
+    const tick = await watchTick({ runner, config, statePath });
+
+    assert.equal(tick.thermalThrottled, true);
+    assert.equal(tick.thermalTripped, true);
+    assert.equal(runner.disablesleep, 0);
+    assert.match(tick.events.join("\n"), /restored normal sleep/);
+    const session = await readSession(statePath);
+    assert.equal(session.lidClosed, false);
+    assert.equal(session.safetyRelease.reason, "thermal-pressure");
+    assert.equal(session.safetyRelease.ok, true);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("watchTick preserves recovery state when thermal sleep restore fails", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "rucksack-watch-"));
+  const statePath = path.join(dir, "session.json");
+
+  try {
+    await writeSession(
+      { pid: 4242, startedAt: "2026-07-03T00:00:00.000Z", lidClosed: true, previousDisablesleep: 0 },
+      statePath
+    );
+    const config = configWithHotspot("dev-hotspot");
+    const runner = wifiRunner({ ssid: "dev-hotspot", speedLimit: 70, disablesleep: 1, restoreFails: true });
+
+    const tick = await watchTick({ runner, config, statePath });
+
+    assert.equal(tick.thermalTripped, false);
+    assert.match(tick.events.join("\n"), /restoring normal sleep failed/);
+    const session = await readSession(statePath);
+    assert.equal(session.lidClosed, true);
+    assert.equal(session.safetyRelease.ok, false);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("runWatchLoop notifies once when the battery floor trips", async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "rucksack-watch-"));
   const statePath = path.join(dir, "session.json");
@@ -257,7 +308,8 @@ function wifiRunner({
   battPercent = null,
   battSource = "Battery Power",
   speedLimit = 100,
-  disablesleep = 0
+  disablesleep = 0,
+  restoreFails = false
 } = {}) {
   const runner = {
     platform: "darwin",
@@ -303,6 +355,9 @@ function wifiRunner({
         return { command, code: 0, stdout: `disablesleep ${runner.disablesleep}\n`, stderr: "" };
       }
       if (command.startsWith("sudo pmset -a disablesleep ")) {
+        if (restoreFails) {
+          return { command, code: 1, stdout: "", stderr: "pmset restore failed" };
+        }
         runner.disablesleep = Number(command.split(" ").at(-1));
         return { command, code: 0, stdout: "", stderr: "" };
       }

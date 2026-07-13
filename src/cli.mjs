@@ -157,7 +157,9 @@ async function startCommand(options, stdout, stderr, runner) {
   });
 
   const batteryMonitor = config.power?.warnBatteryPercent != null || config.power?.floorBatteryPercent != null;
-  const watchEnabled = Boolean(options.watch || config.watch?.enabled || batteryMonitor);
+  // Thermal fail-safe coverage is mandatory for macOS lid-closed sessions.
+  // WSL does not support the watchdog yet, so retain its explicit warning path.
+  const watchEnabled = Boolean(options.watch || config.watch?.enabled || batteryMonitor || (host !== "wsl" && lidClosed));
 
   if (options.dryRun) {
     const commands = [...started.commands];
@@ -606,7 +608,9 @@ Core options:
                          and the macOS firewall; pack prints the phone URLs and pushes
                          them to --notify-url.
   --watch                Keep a watchdog running after start: rejoins the hotspot if
-                         Wi-Fi drops and restarts caffeinate if it dies (log: ~/.rucksack/watch.log)
+                         Wi-Fi drops and restarts caffeinate if it dies (log: ~/.rucksack/watch.log).
+                         Automatically enabled for macOS lid-closed mode so thermal
+                         pressure can restore normal sleep.
   --watch-interval sec   Seconds between watchdog checks (default 20)
   --warn-battery pct     Watchdog pings your phone when battery falls to this % (enables --watch)
   --sleep-battery pct    Safety floor: at this % on battery the watchdog restores normal

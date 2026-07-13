@@ -65,6 +65,26 @@ test("pack dry run includes the watchdog when --watch is set", async () => {
   }
 });
 
+test("pack automatically includes the watchdog in macOS lid-closed mode", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "rucksack-cli-"));
+  const output = capture();
+  const errors = capture();
+
+  try {
+    const code = await main(
+      ["pack", "--dry-run", "--lid-closed", "--hotspot", "Phone", "--state", path.join(dir, "session.json")],
+      { stdout: output, stderr: errors, runner: fakeRunner() }
+    );
+
+    assert.equal(code, 0);
+    assert.equal(errors.text, "");
+    assert.match(output.text, /sudo pmset -a disablesleep 1/);
+    assert.match(output.text, /watch-daemon/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("start refuses on non-macOS hosts even with --force", async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "rucksack-cli-"));
   const output = capture();
@@ -171,6 +191,9 @@ function fakeRunner({ initialSsid = "Phone", platform = "darwin" } = {}) {
         },
         "networksetup -listallhardwareports": {
           stdout: "Hardware Port: Wi-Fi\nDevice: en0\n"
+        },
+        "pmset -g custom": {
+          stdout: "Battery Power:\n disablesleep 0\n"
         }
       };
       if (command === "networksetup -getairportnetwork 'en0'") {

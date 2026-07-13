@@ -164,7 +164,7 @@
           </article>
           <article class="card">
             <code class="card__cmd"><span>$</span> rucksack pack --watch</code>
-            <p>A watchdog rides along: rejoins the hotspot when Wi-Fi drops, restarts the keep-awake process if it dies, and pings your phone if the CPU starts thermal-throttling in the bag. All logged.</p>
+            <p>A watchdog rides along: rejoins the hotspot when Wi-Fi drops, restarts the keep-awake process if it dies, and restores normal sleep if the CPU starts thermal-throttling in the bag. All logged, with a phone alert.</p>
           </article>
           <article class="card">
             <code class="card__cmd"><span>$</span> rucksack pack --warn-battery 20 --sleep-battery 10</code>
@@ -220,8 +220,8 @@
               <code><span class="t-prompt">$</span> <span class="t-comment"># it runs sudo — pin a reviewed release instead of tracking main:</span></code>
             </div>
             <div class="terminal__line">
-              <code><span class="t-prompt">$</span> RUCKSACK_REF=v0.2.0 curl -fsSL https://rucksack.sh/install | bash</code>
-              <button class="copy" type="button" data-copy="RUCKSACK_REF=v0.2.0 curl -fsSL https://rucksack.sh/install | bash" aria-label="Copy pinned install command">COPY</button>
+              <code><span class="t-prompt">$</span> curl -fsSL https://rucksack.sh/install | RUCKSACK_REF=v0.2.0 bash</code>
+              <button class="copy" type="button" data-copy="curl -fsSL https://rucksack.sh/install | RUCKSACK_REF=v0.2.0 bash" aria-label="Copy pinned install command">COPY</button>
             </div>
           </div>
         </div>
@@ -237,7 +237,7 @@
         </div>
         <ul class="straight">
           <li><strong>Lid-closed mode is the real backpack mode.</strong> On battery, <code>caffeinate</code> alone can't survive a lid close — that's physics of macOS, not marketing. Rucksack uses <code>sudo pmset</code> and restores your saved previous <code>disablesleep</code> value.</li>
-          <li><strong>A laptop in a bag is a laptop in a bag.</strong> Agent <em>reasoning</em> is network-bound, but the commands agents run — test suites, builds, Docker, browsers, local databases, local models — can peg the CPU. Test your actual workload before carrying a closed laptop, keep vents unobstructed, and don't charge it inside a closed bag. With <code>--watch</code>, Rucksack monitors thermal pressure and battery and pings your phone — but it can't bend thermodynamics.</li>
+          <li><strong>A laptop in a bag is a laptop in a bag.</strong> Agent <em>reasoning</em> is network-bound, but the commands agents run — test suites, builds, Docker, browsers, local databases, local models — can peg the CPU. Test your actual workload before carrying a closed laptop, keep vents unobstructed, and don't charge it inside a closed bag. Lid-closed mode automatically runs the watchdog; if macOS reports thermal throttling, it restores normal sleep and pings your phone — but it can't bend thermodynamics.</li>
           <li><strong>Alerts ride the same link.</strong> If the hotspot is fully dead, the "it's dead" ping queues until something routes. A heartbeat dead-man's switch is on the roadmap.</li>
           <li><strong>Tailscale is optional.</strong> Agent remote surfaces are outbound-only — your phone never needs to reach the Mac. A tailnet only matters if you want direct ssh.</li>
           <li><strong>macOS first; Windows rides in the WSL sidecar.</strong> On a Mac the core is <code>pmset</code> and <code>caffeinate</code>. On a Windows laptop, Rucksack now runs inside WSL2 (experimental): <code>SetThreadExecutionState</code> holds the machine awake, and lid-closed mode flips the Windows lid-close action with one elevated <code>powercfg</code> write — a single UAC prompt, your previous setting restored on unpack. The watchdog hasn't crossed over yet.</li>

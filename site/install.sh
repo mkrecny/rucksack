@@ -8,7 +8,7 @@
 #   RUCKSACK_REPO  git URL to install from (default: the canonical repo)
 #   RUCKSACK_HOME  where to keep the checkout (default: ~/.rucksack/app)
 #   RUCKSACK_REF   git tag/branch to pin (default: main). Pin a release, e.g.
-#                  RUCKSACK_REF=v0.2.0 curl -fsSL https://rucksack.sh/install | bash
+#                  curl -fsSL https://rucksack.sh/install | RUCKSACK_REF=v0.2.0 bash
 
 set -euo pipefail
 

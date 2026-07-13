@@ -4,6 +4,22 @@ All notable changes to Rucksack are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Automatic thermal sleep fail-safe.** macOS lid-closed mode now starts the
+  watchdog automatically. If `pmset -g therm` reports CPU throttling, Rucksack
+  restores the saved `disablesleep` value so the Mac can sleep and alerts the phone.
+- A concise comparison with native agent remotes, `caffeinate`, Amphetamine, and
+  Adrafinil near the top of the README.
+
+### Fixed
+- Failed battery/thermal sleep restoration no longer marks lid-closed mode as
+  released. Recovery state is preserved so the watchdog or `rucksack recover`
+  can retry.
+- Corrected the pinned installer examples so `RUCKSACK_REF` is passed to `bash`,
+  not only to the `curl` process on the other side of the pipe.
+
 ## [0.2.0] - 2026-07-09
 
 Safety, security, and monitoring pass (from an external code review).
