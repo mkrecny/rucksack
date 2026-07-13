@@ -57,17 +57,17 @@ export async function watchTick({ runner, config, statePath }) {
 }
 
 // Continuous battery + thermal monitoring for a sealed laptop. Battery thresholds
-// are opt-in (--warn-battery / --sleep-battery); thermal is always read (cheap,
-// read-only). Returns { batteryWarn, floorTripped, thermalThrottled } and pushes
-// human-readable lines onto `events`.
+// are opt-in (--warn-battery / --sleep-battery). Thermal pressure is always read;
+// in lid-closed mode, throttling is a fail-safe that restores normal sleep.
 async function checkPowerSafety({ runner, config, session, statePath, events }) {
   const warnAt = numOrNull(config.power?.warnBatteryPercent);
   const floorAt = numOrNull(config.power?.floorBatteryPercent);
+  const safetyAlreadyReleased = Boolean(session.safetyRelease?.ok || session.floorReleased?.ok);
 
   let batteryWarn = false;
   let floorTripped = false;
 
-  if (!session.floorReleased && (warnAt !== null || floorAt !== null)) {
+  if (!safetyAlreadyReleased && (warnAt !== null || floorAt !== null)) {
     const result = await runner.exec("pmset -g batt");
     const battery = result.code === 0 ? parseBattery(result.stdout) : null;
     if (battery) {
@@ -75,7 +75,8 @@ async function checkPowerSafety({ runner, config, session, statePath, events }) 
       if (onBattery && floorAt !== null && battery.percent <= floorAt) {
         if (session.lidClosed) {
           const released = await releaseLidClosed({ runner, session, statePath, reason: "battery-floor" });
-          floorTripped = true;
+          floorTripped = released.ok;
+          batteryWarn = !released.ok;
           events.push(
             released.ok
               ? `Battery ${battery.percent}% reached the ${floorAt}% floor; restored normal sleep (disablesleep ${released.to}) so the Mac can sleep instead of dying.`
@@ -93,16 +94,27 @@ async function checkPowerSafety({ runner, config, session, statePath, events }) 
   }
 
   let thermalThrottled = false;
+  let thermalTripped = false;
   const therm = await runner.exec("pmset -g therm");
   if (therm.code === 0) {
     const thermal = parseThermalPressure(therm.stdout);
     if (thermal.throttled) {
       thermalThrottled = true;
-      events.push(`Thermal pressure: the CPU is throttled to ${thermal.speedLimit}% inside the bag. Check ventilation before the next run.`);
+      if (session.lidClosed && !safetyAlreadyReleased) {
+        const released = await releaseLidClosed({ runner, session, statePath, reason: "thermal-pressure" });
+        thermalTripped = released.ok;
+        events.push(
+          released.ok
+            ? `Thermal pressure: the CPU is throttled to ${thermal.speedLimit}% inside the bag; restored normal sleep (disablesleep ${released.to}) so the Mac can sleep.`
+            : `Thermal pressure: the CPU is throttled to ${thermal.speedLimit}% inside the bag, but restoring normal sleep failed: ${released.detail} Run "rucksack recover".`
+        );
+      } else {
+        events.push(`Thermal pressure: the CPU is throttled to ${thermal.speedLimit}% inside the bag. Check ventilation before the next run.`);
+      }
     }
   }
 
-  return { batteryWarn, floorTripped, thermalThrottled };
+  return { batteryWarn, floorTripped, thermalThrottled, thermalTripped };
 }
 
 function numOrNull(value) {
@@ -126,6 +138,7 @@ export async function runWatchLoop({
   let lastBatteryWarn = false;
   let lastThermal = false;
   let floorNotified = false;
+  let thermalTripNotified = false;
 
   log(`Watch started (checking every ${Math.round(intervalMs / 1000)}s).`);
 
@@ -163,7 +176,11 @@ export async function runWatchLoop({
       await safeNotify(notify, log, `Rucksack: ${warnEvent ?? "battery is low and falling."}`);
     }
     lastBatteryWarn = Boolean(tick.batteryWarn);
-    if (tick.thermalThrottled && !lastThermal) {
+    if (tick.thermalTripped && !thermalTripNotified) {
+      thermalTripNotified = true;
+      const thermalEvent = tick.events.find((event) => event.includes("Thermal"));
+      await safeNotify(notify, log, `Rucksack: ${thermalEvent ?? "thermal safety tripped; restored normal sleep behaviour."}`);
+    } else if (tick.thermalThrottled && !lastThermal) {
       const thermalEvent = tick.events.find((event) => event.includes("Thermal"));
       await safeNotify(notify, log, `Rucksack: ${thermalEvent ?? "thermal pressure detected inside the bag."}`);
     }

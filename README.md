@@ -33,6 +33,17 @@ You kicked off a long agent run. Codex is mid-refactor, Claude is grinding throu
 
 > **Native remote control lets you steer the agent. Rucksack keeps the host alive and reachable while you move.** Codex, Claude, and friends already ship the phone-facing half; Rucksack is the other half — the ritual that makes sure the laptop is still awake, online, and on the right network when you reach for it.
 
+## Why not just...?
+
+Rucksack is not another agent client or a generic sleep switch. It handles the trip around tools that already do those jobs well:
+
+| Tool | What it solves | Where Rucksack starts |
+| --- | --- | --- |
+| Codex / Claude remote control | The phone-facing UI for steering an agent | Preflight and host-side reliability: power state, hotspot, real internet, reconnects, alerts, and recovery |
+| `caffeinate` | Keeps a lid-open Mac awake | A battery-powered Mac still sleeps when its lid closes; Rucksack manages and restores `pmset disablesleep` |
+| [Amphetamine](https://apps.apple.com/app/amphetamine/id937984704) | Mature, general-purpose Mac sleep control and triggers | Rucksack adds an agent-travel workflow: readiness checks, hotspot recovery, phone URLs, and one-command cleanup |
+| [Adrafinil](https://github.com/kageroumado/Adrafinil) | Agent-aware Mac sleep control that stops when work or heat says to | Rucksack manages the whole moving connection and also has an experimental Windows/WSL backend |
+
 ## The run
 
 <table>
@@ -74,7 +85,7 @@ Requires Node 20+ on macOS — or, experimentally, on a Windows laptop [under WS
 Check what you're running with `rucksack version`. The `curl … | bash` installer tracks `main`; **pin a release** by setting `RUCKSACK_REF` (a tag or branch):
 
 ```sh
-RUCKSACK_REF=v0.2.0 curl -fsSL https://rucksack.sh/install | bash
+curl -fsSL https://rucksack.sh/install | RUCKSACK_REF=v0.2.0 bash
 ```
 
 Because this tool runs `sudo` and changes power settings, tagged releases and a [CHANGELOG](CHANGELOG.md) exist so you can pin and review exactly what you install. CI runs the test suite on macOS and Linux (Node 20 and 22) for every push.
@@ -102,7 +113,7 @@ rucksack stop
 
 ### The watchdog
 
-`--watch` keeps a watchdog running after you leave. Every 20 seconds (configurable with `--watch-interval` or `watch.intervalSeconds`) it rejoins the hotspot if Wi-Fi dropped, restarts `caffeinate` if it died, watches battery and thermal pressure (below), and logs to `watch.log` next to the session state file. `rucksack stop` shuts it down with the rest of the session.
+`--watch` keeps a watchdog running after you leave. Every 20 seconds (configurable with `--watch-interval` or `watch.intervalSeconds`) it rejoins the hotspot if Wi-Fi dropped, restarts `caffeinate` if it died, watches battery and thermal pressure (below), and logs to `watch.log` next to the session state file. On macOS, lid-closed mode enables the watchdog automatically so its thermal fail-safe is always present. `rucksack stop` shuts it down with the rest of the session.
 
 ### Battery and thermal safety
 
@@ -114,9 +125,9 @@ rucksack pack --lid-closed --yes --warn-battery 20 --sleep-battery 10
 
 - **`--warn-battery 20`** — at 20% on battery, ping your phone: *"battery is 20% and falling."*
 - **`--sleep-battery 10`** (the safety floor) — at 10% on battery, the watchdog **restores normal sleep** (undoes lid-closed mode) so the Mac sleeps and preserves your work instead of running the battery flat. It pings your phone and won't re-trip.
-- **Thermal** — the watchdog reads `pmset -g therm` every tick and pings once if macOS starts throttling the CPU under thermal pressure inside the bag.
+- **Thermal fail-safe** — the watchdog reads `pmset -g therm` every tick. If macOS starts throttling the CPU during lid-closed mode, it restores normal sleep immediately and pings your phone. If restoring `disablesleep` fails, the session remains recoverable and the watchdog retries rather than claiming the Mac is safe.
 
-If the floor trips, `rucksack recover` (or `unpack`) cleans up as usual; the sleep setting is already restored.
+If either fail-safe trips, `rucksack recover` (or `unpack`) cleans up as usual; after a successful trip, the sleep setting is already restored.
 
 ### Recovery
 
@@ -229,7 +240,7 @@ Rucksack runs `sudo` and changes global power settings, so it tries to earn that
 
 ## Straight talk
 
-- **A laptop in a bag is a laptop in a bag.** Agent *reasoning* is network-bound, but the commands agents run — test suites, builds, Docker, browsers, local databases, compilers, local models — can peg the CPU. Test your actual workload before carrying a closed laptop, keep vents unobstructed, and don't charge it inside a closed bag. With `--watch`, Rucksack monitors thermal pressure and battery and pings your phone — but it can't bend thermodynamics.
+- **A laptop in a bag is a laptop in a bag.** Agent *reasoning* is network-bound, but the commands agents run — test suites, builds, Docker, browsers, local databases, compilers, local models — can peg the CPU. Test your actual workload before carrying a closed laptop, keep vents unobstructed, and don't charge it inside a closed bag. In lid-closed mode, the watchdog restores normal sleep when macOS reports thermal throttling and pings your phone — but it can't bend thermodynamics.
 - **Alerts ride the same link.** If the hotspot is fully dead, the "it's dead" ping queues until something routes. A heartbeat dead-man's switch is on the roadmap.
 - **iPhone hotspots are moody.** They stop advertising when idle, so watchdog rejoin is best-effort. Keep the phone awake-ish for best results.
 
