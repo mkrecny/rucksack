@@ -1,6 +1,6 @@
 import { readFile, rm } from "node:fs/promises";
 import { defaultStatePath, fileExists, secureWriteFile } from "./config.mjs";
-import { parsePmsetDisablesleep } from "./checks.mjs";
+import { readDisablesleep } from "./checks.mjs";
 import { runnerHostKind } from "./platform.mjs";
 
 export async function readSession(statePath = defaultStatePath()) {
@@ -16,12 +16,6 @@ export async function removeSession(statePath = defaultStatePath()) {
   if (await fileExists(statePath)) {
     await rm(statePath);
   }
-}
-
-async function readDisablesleep(runner) {
-  const pmset = await runner.exec("pmset -g custom");
-  if (pmset.code !== 0) return null;
-  return parsePmsetDisablesleep(pmset.stdout);
 }
 
 // Restore disablesleep to `target`, verifying the machine actually reports it.
@@ -118,14 +112,9 @@ export async function startSession({
 
   let pid = null;
   if (lidClosed) {
-    const pmset = await runner.exec("pmset -g custom");
-    if (pmset.code !== 0) {
-      throw new Error((pmset.stderr || pmset.stdout || "pmset -g custom failed").trim());
-    }
-
-    previousDisablesleep = parsePmsetDisablesleep(pmset.stdout);
+    previousDisablesleep = await readDisablesleep(runner);
     if (previousDisablesleep === null) {
-      throw new Error("Could not read the current pmset disablesleep value; refusing lid-closed mode without restore state.");
+      throw new Error("Could not read the current disablesleep value; refusing lid-closed mode without restore state.");
     }
 
     const pmsetResult = await runner.exec("sudo pmset -a disablesleep 1", { timeoutMs: 30000 });
@@ -133,10 +122,9 @@ export async function startSession({
       throw new Error((pmsetResult.stderr || pmsetResult.stdout || "sudo pmset failed").trim());
     }
 
-    const verify = await runner.exec("pmset -g custom");
-    if (verify.code !== 0 || parsePmsetDisablesleep(verify.stdout) !== 1) {
+    if (await readDisablesleep(runner) !== 1) {
       await runner.exec(`sudo pmset -a disablesleep ${previousDisablesleep}`, { timeoutMs: 30000 });
-      throw new Error("pmset did not report disablesleep 1 after enabling lid-closed mode.");
+      throw new Error("macOS did not report disablesleep 1 after enabling lid-closed mode.");
     }
   }
 

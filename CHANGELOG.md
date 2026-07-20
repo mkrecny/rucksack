@@ -14,6 +14,12 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Adrafinil near the top of the README.
 
 ### Fixed
+- macOS lid-closed mode now falls back to `IOPMrootDomain.SleepDisabled` when
+  newer macOS releases omit `disablesleep` from `pmset -g`, preserving verified
+  baseline capture and restore checks.
+- `--connect-hotspot` no longer treats any active Wi-Fi connection as a
+  successful join when macOS redacts the SSID. It stops and asks for manual
+  verification before `--allow-redacted-ssid` can be used on a subsequent run.
 - Failed battery/thermal sleep restoration no longer marks lid-closed mode as
   released. Recovery state is preserved so the watchdog or `rucksack recover`
   can retry.
