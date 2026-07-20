@@ -100,7 +100,7 @@ rucksack doctor --remote codex
 
 Checks macOS, power tools, battery threshold, hotspot SSID, real internet reachability (via `captive.apple.com` — works even when macOS redacts the SSID), Tailscale (optional — see below), and each configured agent remote.
 
-On newer macOS versions, SSID access can be privacy-redacted for terminal processes. If `doctor` says Wi-Fi is active but the SSID is redacted, either grant Location Services access to your terminal or opt in with `--allow-redacted-ssid` — the connectivity probe still gives you real assurance the link works.
+On newer macOS versions, SSID access can be privacy-redacted for terminal processes. If `doctor` says Wi-Fi is active but the SSID is redacted, either grant Location Services access to your terminal or manually verify the Wi-Fi menu before opting in with `--allow-redacted-ssid`. That override proves only that Wi-Fi and internet access work; it cannot prove the active network is the configured hotspot. For this reason, an unverified `--connect-hotspot` attempt stops before starting a session—verify the network manually, then rerun without `--connect-hotspot` and with `--allow-redacted-ssid`.
 
 ### Lid-closed mode (backpack mode)
 

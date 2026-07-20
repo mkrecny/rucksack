@@ -55,6 +55,25 @@ test("startSession writes state and stopSession restores saved lid setting", asy
   }
 });
 
+test("startSession uses IOPMrootDomain when pmset omits disablesleep", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "rucksack-test-"));
+  const statePath = path.join(dir, "session.json");
+  const runner = fakeRunner({ omitPmsetDisablesleep: true });
+
+  try {
+    const result = await startSession({ runner, statePath, lidClosed: true });
+
+    assert.equal(result.session.previousDisablesleep, 0);
+    assert.equal(runner.disablesleep, 1);
+
+    await stopSession({ runner, statePath });
+    assert.equal(runner.disablesleep, 0);
+    assert.ok(runner.commands.includes("/usr/sbin/ioreg -r -c IOPMrootDomain -d 1"));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("startSession cleans stale state and starts a new caffeinate process", async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "rucksack-test-"));
   const statePath = path.join(dir, "session.json");
@@ -216,14 +235,17 @@ test("writeSession stores state 0600 in a 0700 directory", async () => {
   }
 });
 
-function fakeRunner({ disablesleep = 0, alivePid = 4242, failDisablesleepWrite = false } = {}) {
+function fakeRunner({ disablesleep = 0, alivePid = 4242, failDisablesleepWrite = false, omitPmsetDisablesleep = false } = {}) {
   const runner = {
     commands: [],
     disablesleep,
     async exec(command) {
       runner.commands.push(command);
       if (command === "pmset -g custom") {
-        return { command, code: 0, stdout: `disablesleep ${runner.disablesleep}\n`, stderr: "" };
+        return { command, code: 0, stdout: omitPmsetDisablesleep ? "sleep 1\n" : `disablesleep ${runner.disablesleep}\n`, stderr: "" };
+      }
+      if (command === "/usr/sbin/ioreg -r -c IOPMrootDomain -d 1") {
+        return { command, code: 0, stdout: `"SleepDisabled" = ${runner.disablesleep ? "Yes" : "No"}\n`, stderr: "" };
       }
       if (command.startsWith("sudo pmset -a disablesleep ")) {
         if (failDisablesleepWrite) {

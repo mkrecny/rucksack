@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { CONNECTIVITY_PROBE_URL, checkConnectivity, checkHotspot, checkPowerTools, checkRemotes, checkTailnet, connectHotspot, parseBattery, parseIpconfigWifiSummary, parsePmsetDisablesleep, parseWifiDevice, parseWifiSsid, runDoctor } from "../src/checks.mjs";
+import { CONNECTIVITY_PROBE_URL, checkConnectivity, checkHotspot, checkPowerTools, checkRemotes, checkTailnet, connectHotspot, parseBattery, parseIoregSleepDisabled, parseIpconfigWifiSummary, parsePmsetDisablesleep, parseWifiDevice, parseWifiSsid, runDoctor } from "../src/checks.mjs";
 import { createDefaultConfig } from "../src/config.mjs";
 
 test("parseBattery extracts percent, power source, and state", () => {
@@ -43,6 +43,12 @@ test("parseIpconfigWifiSummary detects active Wi-Fi with redacted SSID", () => {
 test("parsePmsetDisablesleep extracts the current restore value", () => {
   assert.equal(parsePmsetDisablesleep(" sleep 10\n disablesleep 1\n tcpkeepalive 1"), 1);
   assert.equal(parsePmsetDisablesleep(" sleep 10\n"), null);
+});
+
+test("parseIoregSleepDisabled extracts effective Yes and No states", () => {
+  assert.equal(parseIoregSleepDisabled('    "SleepDisabled" = Yes'), 1);
+  assert.equal(parseIoregSleepDisabled('    "SleepDisabled" = No'), 0);
+  assert.equal(parseIoregSleepDisabled('    "System Sleep Timer" = 1'), null);
 });
 
 test("checkHotspot fails when strict hotspot SSID does not match", async () => {
@@ -125,6 +131,20 @@ test("checkPowerTools fails when required macOS commands are unavailable", async
   assert.match(result.detail, /caffeinate/);
 });
 
+test("checkPowerTools reads IOPMrootDomain when pmset omits disablesleep", async () => {
+  const config = createDefaultConfig();
+  config.power.lidClosed = true;
+  const result = await checkPowerTools(config, fakeRunner({
+    "command -v 'pmset'": { stdout: "/usr/bin/pmset\n" },
+    "command -v 'caffeinate'": { stdout: "/usr/bin/caffeinate\n" },
+    "pmset -g custom": { stdout: "Battery Power:\n sleep 1\n" },
+    "/usr/sbin/ioreg -r -c IOPMrootDomain -d 1": { stdout: '    "SleepDisabled" = No\n' }
+  }));
+
+  assert.equal(result.status, "pass");
+  assert.match(result.detail, /restore state is readable/);
+});
+
 test("connectHotspot connects and verifies the target SSID", async () => {
   const config = createDefaultConfig();
   const runner = statefulWifiRunner("Home");
@@ -153,16 +173,16 @@ test("connectHotspot does not reconnect when already on the target SSID", async 
   assert.equal(runner.commands.includes("networksetup -setairportnetwork 'en0' 'dev-hotspot'"), false);
 });
 
-test("connectHotspot reports active Wi-Fi when macOS redacts post-join SSID", async () => {
+test("connectHotspot refuses an unverified join when macOS redacts post-join SSID", async () => {
   const config = createDefaultConfig();
   const runner = redactedWifiRunner();
 
   const result = await connectHotspot(config, runner, { ssid: "dev-hotspot" });
 
-  assert.equal(result.ok, true);
+  assert.equal(result.ok, false);
   assert.equal(result.verified, false);
   assert.equal(result.redacted, true);
-  assert.match(result.detail, /redacted/);
+  assert.match(result.detail, /rerun without --connect-hotspot/);
 });
 
 test("checkConnectivity passes when the captive portal probe succeeds", async () => {

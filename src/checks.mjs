@@ -66,6 +66,27 @@ export function parsePmsetDisablesleep(raw) {
   return match ? Number(match[1]) : null;
 }
 
+export function parseIoregSleepDisabled(raw) {
+  const match = String(raw).match(/["']?SleepDisabled["']?\s*=\s*(Yes|No|True|False|1|0)\b/i);
+  if (!match) return null;
+  return /^(?:yes|true|1)$/i.test(match[1]) ? 1 : 0;
+}
+
+// Newer macOS releases may omit disablesleep from every pmset read even though
+// IOPMrootDomain still exposes the effective state. Prefer pmset for backwards
+// compatibility, then fall back to that read-only I/O Registry property.
+export async function readDisablesleep(runner) {
+  const pmset = await runner.exec("pmset -g custom");
+  if (pmset.code === 0) {
+    const value = parsePmsetDisablesleep(pmset.stdout);
+    if (value !== null) return value;
+  }
+
+  const ioreg = await runner.exec("/usr/sbin/ioreg -r -c IOPMrootDomain -d 1");
+  if (ioreg.code !== 0) return null;
+  return parseIoregSleepDisabled(ioreg.stdout);
+}
+
 // `pmset -g therm` reports CPU_Speed_Limit; below 100 means macOS is throttling
 // the CPU under thermal pressure (the signal that matters for a sealed bag).
 export function parseThermalPressure(raw) {
@@ -212,13 +233,13 @@ export async function connectHotspot(config, runner, { ssid, password, dryRun = 
   if (verified.ssid !== expectedSsid) {
     if (verified.connected && verified.redacted) {
       return {
-        ok: true,
+        ok: false,
         redacted: true,
         verified: false,
         device: wifi.device,
         ssid: expectedSsid,
         command,
-        detail: `Connection command completed and Wi-Fi is active on ${wifi.device}, but macOS redacted the SSID so Rucksack cannot prove it is ${expectedSsid}.`
+        detail: `Connection command completed and Wi-Fi is active on ${wifi.device}, but macOS redacted the SSID so Rucksack cannot prove it joined ${expectedSsid}. Verify the network in the Wi-Fi menu, then rerun without --connect-hotspot and pass --allow-redacted-ssid.`
       };
     }
 
@@ -289,11 +310,7 @@ export async function checkPowerTools(config, runner) {
   }
 
   if (config.power?.lidClosed) {
-    const pmset = await runner.exec("pmset -g custom");
-    if (pmset.code !== 0) {
-      return check("power-tools", "Power tools", CHECK_STATUS.FAIL, commandFailed("pmset -g custom", pmset));
-    }
-    if (parsePmsetDisablesleep(pmset.stdout) === null) {
+    if (await readDisablesleep(runner) === null) {
       return check(
         "power-tools",
         "Power tools",
